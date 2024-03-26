@@ -26,6 +26,14 @@ jobs:
       - name: Lint
         run: make lint
 
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Unit tests
+        run: make test
+  
   integration-tests:
     runs-on: ubuntu-latest
     steps:
