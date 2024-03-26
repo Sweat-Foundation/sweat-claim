@@ -16,4 +16,8 @@ impl Contract {
     pub(crate) fn assert_private() {
         require!(current_account_id() == predecessor_account_id(), "Method is private",);
     }
+
+    pub(crate) fn assert_update(&self) {
+        self.assert_oracle();
+    }
 }

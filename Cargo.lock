@@ -2451,6 +2451,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "near-self-update"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d6ac7a22edf6bb45099422c603e00bf9db6af9957aafe93041cb19a8d131749"
+dependencies = [
+ "anyhow",
+ "near-workspaces",
+ "nitka",
+]
+
+[[package]]
+name = "near-self-update-proc"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb4768efe6f32fbe85f9f519fe57d31eca2d42aa7545f67bfdd0e38fb08ba092"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "near-stdx"
 version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2616,9 +2638,9 @@ checksum = "e4a24736216ec316047a1fc4252e27dabb04218aa4a3f37c6e7ddbf1f9782b54"
 
 [[package]]
 name = "nitka"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85eaa205f149de38d17bc5d9a648cd56040de40b0ecda4fd50c454ef8007d4cc"
+checksum = "28572a79ec87b43a9f307a3bcf00b133a9f9f1461cb3f8e4cc755adc81a3c4b4"
 dependencies = [
  "anyhow",
  "dotenv",
@@ -2632,9 +2654,9 @@ dependencies = [
 
 [[package]]
 name = "nitka-proc"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58f943784b90b720e6596109e45e3400c2c2826dc13123aa8b831fe10fdf152c"
+checksum = "203f355bd3bb04b8515f4d9e899f58d327cc03207090cd2dee5ebdec2591fdca"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3940,12 +3962,13 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 [[package]]
 name = "sweat-model"
 version = "0.1.0"
-source = "git+https://github.com/sweatco/sweat-near?rev=1fee5d917dc1f2eeb91ba4ac65eef35f173e9a47#1fee5d917dc1f2eeb91ba4ac65eef35f173e9a47"
+source = "git+https://github.com/sweatco/sweat-near?rev=19063e79c4795ff67d6971fe2ca18be31c961011#19063e79c4795ff67d6971fe2ca18be31c961011"
 dependencies = [
  "anyhow",
  "async-trait",
  "near-contract-standards",
  "near-sdk 4.1.1",
+ "near-self-update",
  "near-workspaces",
  "nitka",
  "nitka-proc",
@@ -3957,6 +3980,7 @@ version = "1.0.3"
 dependencies = [
  "claim-model",
  "near-sdk 4.1.1",
+ "near-self-update-proc",
 ]
 
 [[package]]

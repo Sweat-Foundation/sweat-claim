@@ -1,14 +1,11 @@
 #![cfg(test)]
 
-use std::future::IntoFuture;
-
 use anyhow::Result;
 use claim_model::api::RecordApiIntegration;
 use near_sdk::json_types::U128;
 use near_workspaces::types::Gas;
 use nitka::measure::{
     measure::scoped_command_measure,
-    outcome_storage::OutcomeStorage,
     utils::{pretty_gas_string, values_diff},
 };
 
@@ -72,15 +69,13 @@ async fn measure_record_batch_for_hold(count: usize) -> Result<Gas> {
         })
         .collect();
 
-    let (gas, _) = OutcomeStorage::measure_total(
-        &oracle,
-        context
-            .sweat_claim()
-            .record_batch_for_hold(records)
-            .with_user(&oracle)
-            .into_future(),
-    )
-    .await?;
+    let gas = context
+        .sweat_claim()
+        .record_batch_for_hold(records)
+        .with_user(&oracle)
+        .result()
+        .await?
+        .total_gas_burnt;
 
     Ok(gas)
 }

@@ -5,6 +5,7 @@ use near_sdk::{
     store::{LookupMap, UnorderedMap, UnorderedSet, Vector},
     AccountId, BorshStorageKey, PanicOnDefault,
 };
+use near_self_update_proc::SelfUpdate;
 
 mod auth;
 mod burn;
@@ -19,7 +20,7 @@ const INITIAL_BURN_PERIOD_MS: u32 = 30 * 24 * 60 * 60;
 
 /// The main structure representing a smart contract for managing fungible tokens.
 #[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, SelfUpdate)]
 pub struct Contract {
     /// The account ID of the fungible token contract serviced by this smart contract.
     ///

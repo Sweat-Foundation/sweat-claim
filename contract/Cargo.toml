@@ -15,5 +15,6 @@ integration-api = ["claim-model/integration-api"]
 
 [dependencies]
 near-sdk = { workspace = true }
+near-self-update-proc = { workspace = true }
 
 claim-model = { workspace = true }

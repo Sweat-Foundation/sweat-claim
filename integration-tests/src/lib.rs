@@ -22,7 +22,7 @@ mod measure;
 mod prepare;
 
 #[tokio::test]
-async fn happy_flow() -> anyhow::Result<()> {
+async fn happy_flow() -> Result<()> {
     let mut context = prepare_contract().await?;
 
     let alice = context.alice().await?;
