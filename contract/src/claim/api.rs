@@ -14,28 +14,22 @@ use crate::{
 #[near_bindgen]
 impl ClaimApi for Contract {
     fn get_claimable_balance_for_account(&self, account_id: AccountId) -> U128 {
-        let Some(account_data) = self.accounts.get(&account_id) else {
+        let Some(account) = self.accounts.get(&account_id) else {
             return U128(0);
         };
 
-        let mut total_accrual = 0;
         let now = now_seconds();
 
-        for (datetime, index) in &account_data.accruals {
-            if !datetime.is_within_period(now, self.burn_period) {
-                continue;
-            }
+        if account
+            .claim_period_refreshed_at
+            .is_within_period(now, self.burn_period)
+        {
+            U128(account.balance)
+        } else {
+            let claim_window_start = now - self.burn_period;
 
-            let Some((accruals, _)) = self.accruals.get(datetime) else {
-                continue;
-            };
-
-            if let Some(amount) = accruals.get(*index) {
-                total_accrual += *amount;
-            }
+            U128(0)
         }
-
-        U128(total_accrual)
     }
 
     fn is_claim_available(&self, account_id: AccountId) -> ClaimAvailabilityView {

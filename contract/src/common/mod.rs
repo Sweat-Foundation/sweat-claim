@@ -1,5 +1,12 @@
-use claim_model::{Duration, UnixTimestamp};
-use near_sdk::env::{block_timestamp_ms, panic_str};
+use std::cmp::min;
+
+use claim_model::{account_record::AccountRecord, Duration, TokensAmount, UnixTimestamp};
+use near_sdk::{
+    env::{block_timestamp_ms, panic_str},
+    AccountId,
+};
+
+use crate::Contract;
 
 mod asserts;
 pub(crate) mod tests;
@@ -36,4 +43,34 @@ fn convert_milliseconds_to_unix_timestamp_successfully() {
 fn convert_milliseconds_to_unix_timestamp_with_unsuccessfully() {
     let millis: u64 = u64::MAX;
     let _timestamp = ms_timestamp_to_seconds(millis);
+}
+
+impl Contract {
+    pub(crate) fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
+        if !self.accounts.contains_key(account_id) {
+            self.accounts
+                .insert(account_id.clone(), AccountRecord::new(now_seconds()));
+        }
+
+        self.accounts.get_mut(account_id).expect("Account not found")
+    }
+}
+
+pub(crate) trait Balance {
+    fn get_effective_balance(&self, now: UnixTimestamp, burn_period: Duration) -> TokensAmount;
+}
+
+impl Balance for AccountRecord {
+    fn get_effective_balance(&self, now: UnixTimestamp, burn_period: Duration) -> TokensAmount {
+        let claim_window_start = now.checked_sub(burn_period).expect("Underflow in claim window");
+        if self.claim_period_refreshed_at.is_within_period(now, burn_period) {
+            self.balance
+        } else {
+            let first_top_up_at = self.claim_period_refreshed_at;
+            let accrual_period = self.last_top_up_at - first_top_up_at;
+
+            let percent_to_burn: f64 = min((claim_window_start - first_top_up_at) as f64 / accrual_period, 1.0);
+            (self.balance * (1 - percent_to_burn)) as _
+        }
+    }
 }

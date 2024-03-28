@@ -3,7 +3,7 @@ use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
 };
 
-use crate::{AccrualIndex, UnixTimestamp};
+use crate::{AccrualIndex, Duration, TokensAmount, UnixTimestamp};
 
 /// Represents the state of a registered account in the smart contract.
 ///
@@ -32,6 +32,9 @@ pub struct AccountRecord {
     /// ```
     pub accruals: Vec<(UnixTimestamp, AccrualIndex)>,
 
+    pub balance: TokensAmount,
+    pub last_top_up_at: UnixTimestamp,
+
     /// Indicates whether the user is authorized to use the contract's features.
     ///
     /// Currently, `is_enabled` is not actively used but is prepared for future releases.
@@ -59,7 +62,9 @@ impl AccountRecord {
     pub fn new(now: UnixTimestamp) -> Self {
         Self {
             accruals: Vec::new(),
+            balance: 0,
             is_enabled: true,
+            last_top_up_at: now,
             claim_period_refreshed_at: now,
             is_locked: false,
         }

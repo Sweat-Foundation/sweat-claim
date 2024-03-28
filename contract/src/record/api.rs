@@ -15,30 +15,11 @@ impl RecordApi for Contract {
         let now_seconds = now_seconds();
         let mut event_data = RecordData::new(now_seconds);
 
-        let balances = self
-            .accruals
-            .entry(now_seconds)
-            .or_insert_with(|| (Vector::new(AccrualsEntry(now_seconds)), 0));
-
         for (account_id, amount) in amounts {
             event_data.amounts.push((account_id.clone(), amount));
 
-            let amount = amount.0;
-            let index = balances.0.len();
-
-            balances.1 += amount;
-            balances.0.push(amount);
-
-            if let Some(record) = self.accounts.get_mut(&account_id) {
-                record.accruals.push((now_seconds, index));
-            } else {
-                let record = AccountRecord {
-                    accruals: vec![(now_seconds, index)],
-                    ..AccountRecord::new(now_seconds)
-                };
-
-                self.accounts.insert(account_id, record);
-            }
+            let account = self.get_account_mut(&account_id);
+            account.balance.checked_add(amount.0).expect("Balance overflow");
         }
 
         emit(Record(event_data));
