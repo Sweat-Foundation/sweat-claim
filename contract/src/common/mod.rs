@@ -62,15 +62,28 @@ pub(crate) trait Balance {
 
 impl Balance for AccountRecord {
     fn get_effective_balance(&self, now: UnixTimestamp, burn_period: Duration) -> TokensAmount {
-        let claim_window_start = now.checked_sub(burn_period).expect("Underflow in claim window");
         if self.claim_period_refreshed_at.is_within_period(now, burn_period) {
-            self.balance
-        } else {
-            let first_top_up_at = self.claim_period_refreshed_at;
-            let accrual_period = self.last_top_up_at - first_top_up_at;
-
-            let percent_to_burn: f64 = min((claim_window_start - first_top_up_at) as f64 / accrual_period, 1.0);
-            (self.balance * (1 - percent_to_burn)) as _
+            return self.balance;
         }
+
+        let claim_window_start = now.checked_sub(burn_period).expect("Underflow in claim window");
+
+        if self.last_top_up_at <= claim_window_start {
+            return 0;
+        }
+
+        let first_top_up_at = self.claim_period_refreshed_at;
+
+        let accrual_period: f64 = (self.last_top_up_at - first_top_up_at) as f64;
+        let period_to_burn: f64 = (claim_window_start - first_top_up_at) as f64;
+        let percent_to_burn: u128 = ((period_to_burn / accrual_period) * 100.0) as u128;
+
+        assert!(percent_to_burn <= 100, "Invalid percent to burn: {percent_to_burn}");
+
+        self.balance
+            .checked_div(100)
+            .expect("Division error")
+            .checked_mul(100 - percent_to_burn)
+            .expect("Multiplication error")
     }
 }

@@ -19,7 +19,8 @@ impl RecordApi for Contract {
             event_data.amounts.push((account_id.clone(), amount));
 
             let account = self.get_account_mut(&account_id);
-            account.balance.checked_add(amount.0).expect("Balance overflow");
+            account.balance = account.balance.checked_add(amount.0).expect("Balance overflow");
+            account.last_top_up_at = now_seconds;
         }
 
         emit(Record(event_data));

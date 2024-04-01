@@ -140,3 +140,67 @@ pub(crate) mod data {
         assert!(get_test_future_success(name));
     }
 }
+
+#[cfg(test)]
+pub(crate) mod balance_tests {
+    use claim_model::{
+        api::{ClaimApi, ConfigApi, RecordApi},
+        UnixTimestamp,
+    };
+    use near_sdk::json_types::U128;
+
+    use crate::common::tests::Context;
+
+    #[test]
+    fn test_effective_balance() {
+        let (mut context, mut contract, accounts) = Context::init_with_oracle();
+        context.switch_account(&accounts.oracle);
+        contract.set_claim_period(0);
+        contract.set_burn_period(10_000);
+
+        context.set_block_timestamp_in_seconds(0);
+
+        let mut alice_balance = 0;
+
+        let mut alice_top_up = 400_000;
+        contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_top_up))]);
+        alice_balance += alice_top_up;
+
+        context.set_block_timestamp_in_seconds(3_000);
+
+        alice_top_up = 100_000;
+        contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_top_up))]);
+        alice_balance += alice_top_up;
+
+        context.set_block_timestamp_in_seconds(5_000);
+
+        alice_top_up = 500_000;
+        contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_top_up))]);
+        alice_balance += alice_top_up;
+
+        context.set_block_timestamp_in_seconds(6_000);
+
+        let alice_current_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        assert_eq!(alice_balance, alice_current_balance);
+
+        context.set_block_timestamp_in_seconds(10_000);
+
+        let alice_current_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        assert_eq!(alice_balance, alice_current_balance);
+
+        context.set_block_timestamp_in_seconds(12_000);
+
+        let alice_current_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        assert_eq!((alice_balance / 100) * 60, alice_current_balance);
+
+        context.set_block_timestamp_in_seconds(14_000);
+
+        let alice_current_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        assert_eq!((alice_balance / 100) * 20, alice_current_balance);
+
+        context.set_block_timestamp_in_seconds(20_000);
+
+        let alice_current_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        assert_eq!(0, alice_current_balance);
+    }
+}

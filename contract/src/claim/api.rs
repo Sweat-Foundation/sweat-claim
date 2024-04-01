@@ -6,7 +6,7 @@ use claim_model::{
 use near_sdk::{env, json_types::U128, near_bindgen, require, store::Vector, AccountId, PromiseOrValue};
 
 use crate::{
-    common::{now_seconds, UnixTimestampExtension},
+    common::{now_seconds, Balance, UnixTimestampExtension},
     Contract, ContractExt,
     StorageKey::AccrualsEntry,
 };
@@ -20,16 +20,7 @@ impl ClaimApi for Contract {
 
         let now = now_seconds();
 
-        if account
-            .claim_period_refreshed_at
-            .is_within_period(now, self.burn_period)
-        {
-            U128(account.balance)
-        } else {
-            let claim_window_start = now - self.burn_period;
-
-            U128(0)
-        }
+        account.get_effective_balance(now, self.burn_period).into()
     }
 
     fn is_claim_available(&self, account_id: AccountId) -> ClaimAvailabilityView {
