@@ -13,7 +13,8 @@ impl CleanApi for Contract {
         self.assert_oracle();
 
         for account_id in account_ids.clone() {
-            self.accounts_legacy.set(account_id, None);
+            self.accounts_legacy.set(account_id.clone(), None);
+            self.accounts.set(account_id, None);
         }
 
         emit(EventKind::Clean(CleanData { account_ids }));
