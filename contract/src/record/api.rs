@@ -1,5 +1,5 @@
 use claim_model::{
-    account_record::AccountRecord,
+    account_record::AccountRecordLegacy,
     api::RecordApi,
     event::{emit, EventKind::Record, RecordData},
 };
@@ -16,6 +16,8 @@ impl RecordApi for Contract {
         let mut event_data = RecordData::new(now_seconds);
 
         for (account_id, amount) in amounts {
+            self.migrate_account_if_outdated(&account_id);
+
             event_data.amounts.push((account_id.clone(), amount));
 
             let account = self.get_account_mut(&account_id);

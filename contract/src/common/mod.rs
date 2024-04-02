@@ -1,6 +1,7 @@
-use std::cmp::min;
-
-use claim_model::{account_record::AccountRecord, Duration, TokensAmount, UnixTimestamp};
+use claim_model::{
+    account_record::{AccountRecord, AccountRecordLegacy, AccountRecordV1, AccountRecordVersioned},
+    Duration, TokensAmount, UnixTimestamp,
+};
 use near_sdk::{
     env::{block_timestamp_ms, panic_str},
     AccountId,
@@ -49,10 +50,11 @@ impl Contract {
     pub(crate) fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
         if !self.accounts.contains_key(account_id) {
             self.accounts
-                .insert(account_id.clone(), AccountRecord::new(now_seconds()));
+                .insert(account_id.clone(), AccountRecordVersioned::new(now_seconds()));
         }
 
-        self.accounts.get_mut(account_id).expect("Account not found")
+        let AccountRecordVersioned::V1(account) = self.accounts.get_mut(account_id).expect("Account not found");
+        account
     }
 }
 

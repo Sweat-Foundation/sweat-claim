@@ -1,4 +1,8 @@
-use claim_model::{account_record::AccountRecord, api::InitApi, Duration, TokensAmount, UnixTimestamp};
+use claim_model::{
+    account_record::{AccountRecordLegacy, AccountRecordVersioned},
+    api::InitApi,
+    Duration, TokensAmount, UnixTimestamp,
+};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     near_bindgen,
@@ -13,6 +17,7 @@ mod clean;
 mod common;
 mod config;
 mod record;
+mod migration;
 
 const INITIAL_CLAIM_PERIOD_MS: u32 = 24 * 60 * 60;
 const INITIAL_BURN_PERIOD_MS: u32 = 30 * 24 * 60 * 60;
@@ -72,7 +77,9 @@ pub struct Contract {
     /// `accounts` holds individual records for users, detailing their accrued tokens and
     /// related service information. It works in conjunction with `accruals` to provide a
     /// comprehensive view of each user's token status.
-    accounts: LookupMap<AccountId, AccountRecord>,
+    accounts_legacy: LookupMap<AccountId, AccountRecordLegacy>,
+
+    accounts: LookupMap<AccountId, AccountRecordVersioned>,
 
     /// Indicates whether a service call is currently in progress.
     ///
@@ -84,10 +91,11 @@ pub struct Contract {
 
 #[derive(BorshStorageKey, BorshSerialize)]
 enum StorageKey {
-    Accounts,
+    AccountsLegacy,
     Accruals,
     AccrualsEntry(u32),
     Oracles,
+    Accounts,
 }
 
 #[near_bindgen]
@@ -99,6 +107,7 @@ impl InitApi for Contract {
         Self {
             token_account_id,
 
+            accounts_legacy: LookupMap::new(StorageKey::AccountsLegacy),
             accounts: LookupMap::new(StorageKey::Accounts),
             accruals: UnorderedMap::new(StorageKey::Accruals),
             oracles: UnorderedSet::new(StorageKey::Oracles),

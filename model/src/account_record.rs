@@ -11,7 +11,8 @@ use crate::{AccrualIndex, Duration, TokensAmount, UnixTimestamp};
 /// the smart contract. It tracks various aspects of the account, such as accrual references,
 /// claim history, and operational states.
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct AccountRecord {
+#[deprecated(note = "Use AccountRecordVersioned instead.")]
+pub struct AccountRecordLegacy {
     /// A list of references to accrual entries in `Contract.accruals`.
     ///
     /// `accruals` contains pairs of timestamps and indices that link to specific accrual
@@ -31,9 +32,6 @@ pub struct AccountRecord {
     ///  └────────────┘      └──────────┘
     /// ```
     pub accruals: Vec<(UnixTimestamp, AccrualIndex)>,
-
-    pub balance: TokensAmount,
-    pub last_top_up_at: UnixTimestamp,
 
     /// Indicates whether the user is authorized to use the contract's features.
     ///
@@ -58,14 +56,63 @@ pub struct AccountRecord {
     pub is_locked: bool,
 }
 
-impl AccountRecord {
+impl AccountRecordLegacy {
     pub fn new(now: UnixTimestamp) -> Self {
         Self {
             accruals: Vec::new(),
-            balance: 0,
             is_enabled: true,
-            last_top_up_at: now,
             claim_period_refreshed_at: now,
+            is_locked: false,
+        }
+    }
+}
+
+#[derive(BorshDeserialize, BorshSerialize)]
+pub enum AccountRecordVersioned {
+    V1(AccountRecordV1),
+}
+
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct AccountRecordV1 {
+    pub balance: TokensAmount,
+    pub last_top_up_at: UnixTimestamp,
+    pub claim_period_refreshed_at: UnixTimestamp,
+    pub is_enabled: bool,
+    pub is_locked: bool,
+}
+
+impl AccountRecordVersioned {
+    pub fn from(account: &AccountRecordLegacy, balance: TokensAmount, last_top_up_at: UnixTimestamp) -> Self {
+        Self::V1(AccountRecordV1 {
+            balance,
+            last_top_up_at,
+            claim_period_refreshed_at: account.claim_period_refreshed_at,
+            is_enabled: account.is_enabled,
+            is_locked: account.is_locked,
+        })
+    }
+
+    pub fn into_latest(&self) -> &AccountRecordV1 {
+        let AccountRecordVersioned::V1(value) = self;
+        value
+    }
+}
+
+impl AccountRecordVersioned {
+    pub fn new(now: UnixTimestamp) -> Self {
+        Self::V1(AccountRecordV1::new(now))
+    }
+}
+
+pub type AccountRecord = AccountRecordV1;
+
+impl AccountRecord {
+    pub fn new(now: UnixTimestamp) -> Self {
+        Self {
+            balance: 0,
+            claim_period_refreshed_at: now,
+            last_top_up_at: now,
+            is_enabled: true,
             is_locked: false,
         }
     }

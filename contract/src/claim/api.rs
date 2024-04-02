@@ -1,7 +1,8 @@
 use claim_model::{
+    account_record::AccountRecordLegacy,
     api::ClaimApi,
     event::{emit, ClaimData, EventKind},
-    ClaimAvailabilityView, ClaimResultView, TokensAmount, UnixTimestamp,
+    ClaimAvailabilityView, ClaimResultView, Duration, TokensAmount, UnixTimestamp,
 };
 use near_sdk::{env, json_types::U128, near_bindgen, require, store::Vector, AccountId, PromiseOrValue};
 
@@ -14,38 +15,72 @@ use crate::{
 #[near_bindgen]
 impl ClaimApi for Contract {
     fn get_claimable_balance_for_account(&self, account_id: AccountId) -> U128 {
-        let Some(account) = self.accounts.get(&account_id) else {
-            return U128(0);
-        };
-
         let now = now_seconds();
 
-        account.get_effective_balance(now, self.burn_period).into()
+        if let Some(account) = self.accounts_legacy.get(&account_id) {
+            let mut total_accrual = 0;
+
+            for (datetime, index) in &account.accruals {
+                if !datetime.is_within_period(now, self.burn_period) {
+                    continue;
+                }
+
+                let Some((accruals, _)) = self.accruals.get(datetime) else {
+                    continue;
+                };
+
+                if let Some(amount) = accruals.get(*index) {
+                    total_accrual += *amount;
+                }
+            }
+
+            return U128(total_accrual);
+        }
+
+        if let Some(account) = self.accounts.get(&account_id) {
+            let account = account.into_latest();
+            return U128(account.get_effective_balance(now, self.burn_period));
+        }
+
+        U128(0)
     }
 
     fn is_claim_available(&self, account_id: AccountId) -> ClaimAvailabilityView {
-        let Some(account_data) = self.accounts.get(&account_id) else {
-            return ClaimAvailabilityView::Unregistered;
-        };
+        if let Some(account) = self.accounts.get(&account_id) {
+            let account = account.into_latest();
+            let claim_period_refreshed_at = account.claim_period_refreshed_at;
 
-        let claim_period_refreshed_at = account_data.claim_period_refreshed_at;
-        if claim_period_refreshed_at.is_within_period(now_seconds(), self.claim_period) {
-            ClaimAvailabilityView::Unavailable((claim_period_refreshed_at, self.claim_period))
-        } else {
-            let claimable_entries_count: u16 = account_data
-                .accruals
-                .iter()
-                .filter(|(datetime, _)| datetime.is_within_period(now_seconds(), self.burn_period))
-                .count()
-                .try_into()
-                .expect("To many claimable entries. Expected amount to fit into u16.");
-
-            ClaimAvailabilityView::Available(claimable_entries_count)
+            return if claim_period_refreshed_at.is_within_period(now_seconds(), self.claim_period) {
+                ClaimAvailabilityView::Unavailable((claim_period_refreshed_at, self.claim_period))
+            } else {
+                ClaimAvailabilityView::Available(0)
+            };
         }
+
+        if let Some(account) = self.accounts_legacy.get(&account_id) {
+            let claim_period_refreshed_at = account.claim_period_refreshed_at;
+            return if claim_period_refreshed_at.is_within_period(now_seconds(), self.claim_period) {
+                ClaimAvailabilityView::Unavailable((claim_period_refreshed_at, self.claim_period))
+            } else {
+                let claimable_entries_count: u16 = account
+                    .accruals
+                    .iter()
+                    .filter(|(datetime, _)| datetime.is_within_period(now_seconds(), self.burn_period))
+                    .count()
+                    .try_into()
+                    .expect("To many claimable entries. Expected amount to fit into u16.");
+
+                ClaimAvailabilityView::Available(claimable_entries_count)
+            };
+        }
+
+        ClaimAvailabilityView::Unregistered
     }
 
     fn claim(&mut self) -> PromiseOrValue<ClaimResultView> {
         let account_id = env::predecessor_account_id();
+
+        self.migrate_account_if_outdated(&account_id);
 
         require!(
             matches!(
@@ -55,7 +90,10 @@ impl ClaimApi for Contract {
             "Claim is not available at the moment"
         );
 
-        let account_data = self.accounts.get_mut(&account_id).expect("Account data is not found");
+        let account_data = self
+            .accounts_legacy
+            .get_mut(&account_id)
+            .expect("Account data is not found");
         require!(!account_data.is_locked, "Another operation is running");
 
         account_data.is_locked = true;
@@ -104,7 +142,7 @@ impl Contract {
         details: Vec<(UnixTimestamp, TokensAmount)>,
         is_success: bool,
     ) -> ClaimResultView {
-        let account = self.accounts.get_mut(&account_id).expect("Account not found");
+        let account = self.accounts_legacy.get_mut(&account_id).expect("Account not found");
         account.is_locked = false;
 
         if is_success {
