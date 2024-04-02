@@ -28,6 +28,8 @@ impl Contract {
 
             let account = AccountRecordVersioned::from(account, balance, last_top_up_at);
             self.accounts.insert(account_id.clone(), account);
+
+            self.accounts_legacy.remove(account_id);
         }
     }
 }

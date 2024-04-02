@@ -103,7 +103,7 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_rec
     assert_eq!(alice_balance, alice_new_balance);
 
     let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
-    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(1));
+    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(0));
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn test_check_claim_availability_when_user_has_multiple_claim_records_and_claim_
     context.set_block_timestamp_in_seconds(contract.claim_period as u64 + 100);
 
     let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
-    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(record_count));
+    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(0));
 }
 
 #[test]

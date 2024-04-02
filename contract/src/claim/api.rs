@@ -90,44 +90,25 @@ impl ClaimApi for Contract {
             "Claim is not available at the moment"
         );
 
-        let account_data = self
-            .accounts_legacy
-            .get_mut(&account_id)
-            .expect("Account data is not found");
+        let account_data = self.get_account(&account_id);
         require!(!account_data.is_locked, "Another operation is running");
 
-        account_data.is_locked = true;
+        if account_data.balance > 0 {
+            let now = now_seconds();
+            let amount_to_claim = account_data.get_effective_balance(now, self.burn_period);
+            let amount_to_burn = account_data.balance - amount_to_claim;
 
-        let now = now_seconds();
-        let mut total_accrual = 0;
-        let mut details = vec![];
+            let account_data = self.get_account_mut(&account_id);
+            account_data.is_locked = true;
+            account_data.balance = 0;
 
-        for (datetime, index) in &account_data.accruals {
-            if !datetime.is_within_period(now, self.burn_period) {
-                continue;
-            }
+            self.balance_to_burn = self
+                .balance_to_burn
+                .checked_add(amount_to_burn)
+                .expect("Overflow in balance to burn");
 
-            let Some((accruals, total)) = self.accruals.get_mut(datetime) else {
-                continue;
-            };
-
-            let Some(amount) = accruals.get_mut(*index) else {
-                continue;
-            };
-
-            details.push((*datetime, *amount));
-
-            total_accrual += *amount;
-            *total -= *amount;
-            *amount = 0;
-        }
-
-        account_data.accruals.clear();
-
-        if total_accrual > 0 {
-            self.transfer_external(now, account_id, total_accrual, details)
+            self.transfer_external(now, account_id, amount_to_claim, amount_to_burn)
         } else {
-            account_data.is_locked = false;
             PromiseOrValue::Value(ClaimResultView::new(0))
         }
     }
@@ -138,11 +119,11 @@ impl Contract {
         &mut self,
         now: UnixTimestamp,
         account_id: AccountId,
-        total_accrual: TokensAmount,
-        details: Vec<(UnixTimestamp, TokensAmount)>,
+        amount_to_claim: TokensAmount,
+        amount_to_burn: TokensAmount,
         is_success: bool,
     ) -> ClaimResultView {
-        let account = self.accounts_legacy.get_mut(&account_id).expect("Account not found");
+        let account = self.get_account_mut(&account_id);
         account.is_locked = false;
 
         if is_success {
@@ -150,28 +131,15 @@ impl Contract {
 
             let event_data = ClaimData {
                 account_id,
-                details: details
-                    .iter()
-                    .map(|(timestamp, amount)| (*timestamp, U128(*amount)))
-                    .collect(),
-                total_claimed: U128(total_accrual),
+                claimed: U128(amount_to_claim),
+                burnt: U128(amount_to_burn),
             };
             emit(EventKind::Claim(event_data));
 
-            return ClaimResultView::new(total_accrual);
+            return ClaimResultView::new(amount_to_claim);
         }
 
-        for (timestamp, amount) in details {
-            let daily_accruals = self
-                .accruals
-                .entry(timestamp)
-                .or_insert_with(|| (Vector::new(AccrualsEntry(timestamp)), 0));
-
-            daily_accruals.0.push(amount);
-            daily_accruals.1 += amount;
-
-            account.accruals.push((timestamp, daily_accruals.0.len() - 1));
-        }
+        account.balance = amount_to_claim + amount_to_burn;
 
         ClaimResultView::new(0)
     }
@@ -192,8 +160,8 @@ mod prod {
             &mut self,
             now: UnixTimestamp,
             account_id: AccountId,
-            total_accrual: TokensAmount,
-            details: Vec<(UnixTimestamp, TokensAmount)>,
+            amount_to_claim: TokensAmount,
+            amount_to_burn: TokensAmount,
         ) -> ClaimResultView;
     }
 
@@ -204,10 +172,10 @@ mod prod {
             &mut self,
             now: UnixTimestamp,
             account_id: AccountId,
-            total_accrual: TokensAmount,
-            details: Vec<(UnixTimestamp, TokensAmount)>,
+            amount_to_claim: TokensAmount,
+            amount_to_burn: TokensAmount,
         ) -> ClaimResultView {
-            self.on_transfer_internal(now, account_id, total_accrual, details, is_promise_success())
+            self.on_transfer_internal(now, account_id, amount_to_claim, amount_to_burn, is_promise_success())
         }
     }
 
@@ -216,8 +184,8 @@ mod prod {
             &mut self,
             now: UnixTimestamp,
             account_id: AccountId,
-            total_accrual: TokensAmount,
-            details: Vec<(UnixTimestamp, TokensAmount)>,
+            amount_to_claim: TokensAmount,
+            amount_to_burn: TokensAmount,
         ) -> PromiseOrValue<ClaimResultView> {
             let args = json!({
                 "receiver_id": account_id,
@@ -233,7 +201,7 @@ mod prod {
                 .then(
                     ext_self::ext(env::current_account_id())
                         .with_static_gas(Gas(5 * Gas::ONE_TERA.0))
-                        .on_transfer(now, account_id, total_accrual, details),
+                        .on_transfer(now, account_id, amount_to_claim, amount_to_burn),
                 )
                 .into()
         }
@@ -254,14 +222,14 @@ pub(crate) mod test {
             &mut self,
             now: UnixTimestamp,
             account_id: AccountId,
-            total_accrual: TokensAmount,
-            details: Vec<(UnixTimestamp, TokensAmount)>,
+            amount_to_claim: TokensAmount,
+            amount_to_burn: TokensAmount,
         ) -> PromiseOrValue<ClaimResultView> {
             PromiseOrValue::Value(self.on_transfer_internal(
                 now,
                 account_id,
-                total_accrual,
-                details,
+                amount_to_claim,
+                amount_to_burn,
                 get_test_future_success(EXT_TRANSFER_FUTURE),
             ))
         }

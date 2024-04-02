@@ -47,6 +47,11 @@ fn convert_milliseconds_to_unix_timestamp_with_unsuccessfully() {
 }
 
 impl Contract {
+    pub(crate) fn get_account(&self, account_id: &AccountId) -> &AccountRecord {
+        let AccountRecordVersioned::V1(account) = self.accounts.get(account_id).expect("Account not found");
+        account
+    }
+
     pub(crate) fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
         if !self.accounts.contains_key(account_id) {
             self.accounts

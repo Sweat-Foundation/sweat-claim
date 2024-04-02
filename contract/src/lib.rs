@@ -16,8 +16,8 @@ mod claim;
 mod clean;
 mod common;
 mod config;
-mod record;
 mod migration;
+mod record;
 
 const INITIAL_CLAIM_PERIOD_MS: u32 = 24 * 60 * 60;
 const INITIAL_BURN_PERIOD_MS: u32 = 30 * 24 * 60 * 60;
@@ -87,6 +87,9 @@ pub struct Contract {
     /// contract is currently executing a service call. This flag ensures the integrity of
     /// token transactions and operations within the contract.
     is_service_call_running: bool,
+
+    // TODO: burn this amount in burn method
+    balance_to_burn: TokensAmount,
 }
 
 #[derive(BorshStorageKey, BorshSerialize)]
@@ -116,6 +119,8 @@ impl InitApi for Contract {
             burn_period: INITIAL_BURN_PERIOD_MS,
 
             is_service_call_running: false,
+
+            balance_to_burn: 0,
         }
     }
 }
