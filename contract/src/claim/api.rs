@@ -1,19 +1,18 @@
 use claim_model::{
-    account_record::AccountRecordLegacy,
     api::ClaimApi,
     event::{emit, ClaimData, EventKind},
-    ClaimAvailabilityView, ClaimResultView, Duration, TokensAmount, UnixTimestamp,
+    ClaimAvailabilityView, ClaimResultView, TokensAmount, UnixTimestamp,
 };
-use near_sdk::{env, json_types::U128, near_bindgen, require, store::Vector, AccountId, PromiseOrValue};
+use near_sdk::{env, json_types::U128, near_bindgen, require, AccountId, PromiseOrValue};
 
 use crate::{
     common::{now_seconds, Balance, UnixTimestampExtension},
     Contract, ContractExt,
-    StorageKey::AccrualsEntry,
 };
 
 #[near_bindgen]
 impl ClaimApi for Contract {
+    #[allow(deprecated)]
     fn get_claimable_balance_for_account(&self, account_id: AccountId) -> U128 {
         let now = now_seconds();
 
@@ -45,6 +44,7 @@ impl ClaimApi for Contract {
         U128(0)
     }
 
+    #[allow(deprecated)]
     fn is_claim_available(&self, account_id: AccountId) -> ClaimAvailabilityView {
         if let Some(account) = self.accounts.get(&account_id) {
             let account = account.into_latest();
@@ -189,7 +189,7 @@ mod prod {
         ) -> PromiseOrValue<ClaimResultView> {
             let args = json!({
                 "receiver_id": account_id,
-                "amount": total_accrual.to_string(),
+                "amount": amount_to_claim.to_string(),
                 "memo": "",
             })
             .to_string()

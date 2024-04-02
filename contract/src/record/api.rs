@@ -1,11 +1,10 @@
 use claim_model::{
-    account_record::AccountRecordLegacy,
     api::RecordApi,
     event::{emit, EventKind::Record, RecordData},
 };
-use near_sdk::{json_types::U128, near_bindgen, store::Vector, AccountId};
+use near_sdk::{json_types::U128, near_bindgen, AccountId};
 
-use crate::{common::now_seconds, Contract, ContractExt, StorageKey::AccrualsEntry};
+use crate::{common::now_seconds, Contract, ContractExt};
 
 #[near_bindgen]
 impl RecordApi for Contract {

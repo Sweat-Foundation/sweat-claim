@@ -1,7 +1,7 @@
 #![cfg(test)]
 
-use claim_model::api::{ClaimApi, ConfigApi, RecordApi};
-use near_sdk::{json_types::U128, AccountId};
+use claim_model::api::{ClaimApi, RecordApi};
+use near_sdk::json_types::U128;
 
 use crate::common::tests::Context;
 

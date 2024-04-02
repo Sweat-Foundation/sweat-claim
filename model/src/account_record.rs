@@ -1,9 +1,11 @@
+#![allow(deprecated)]
+
 use near_sdk::{
     borsh,
     borsh::{BorshDeserialize, BorshSerialize},
 };
 
-use crate::{AccrualIndex, Duration, TokensAmount, UnixTimestamp};
+use crate::{AccrualIndex, TokensAmount, UnixTimestamp};
 
 /// Represents the state of a registered account in the smart contract.
 ///

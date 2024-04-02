@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use claim_model::account_record::AccountRecordVersioned;
 use near_sdk::AccountId;
 

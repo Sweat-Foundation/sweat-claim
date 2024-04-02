@@ -1,5 +1,5 @@
 use claim_model::{
-    account_record::{AccountRecord, AccountRecordLegacy, AccountRecordV1, AccountRecordVersioned},
+    account_record::{AccountRecord, AccountRecordVersioned},
     Duration, TokensAmount, UnixTimestamp,
 };
 use near_sdk::{

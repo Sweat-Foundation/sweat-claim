@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use claim_model::api::{BurnApi, ClaimApi, RecordApi};
+use claim_model::api::{BurnApi, ClaimApi};
 use near_sdk::{json_types::U128, PromiseOrValue};
 
 use crate::{

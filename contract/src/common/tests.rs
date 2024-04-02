@@ -5,7 +5,7 @@ use std::time::Duration;
 use claim_model::{account_record::AccountRecordLegacy, api::InitApi, event::RecordData};
 use near_sdk::{json_types::U128, store::Vector, test_utils::VMContextBuilder, testing_env, AccountId};
 
-use crate::{common::now_seconds, Contract, StorageKey::AccrualsEntry};
+use crate::{common::now_seconds, Contract, StorageKey::_AccrualsEntry};
 
 pub(crate) struct Context {
     builder: VMContextBuilder,
@@ -143,10 +143,7 @@ pub(crate) mod data {
 
 #[cfg(test)]
 pub(crate) mod balance_tests {
-    use claim_model::{
-        api::{ClaimApi, ConfigApi, RecordApi},
-        UnixTimestamp,
-    };
+    use claim_model::api::{ClaimApi, ConfigApi, RecordApi};
     use near_sdk::json_types::U128;
 
     use crate::common::tests::Context;
@@ -215,7 +212,7 @@ impl Contract {
         let balances = self
             .accruals
             .entry(now_seconds)
-            .or_insert_with(|| (Vector::new(AccrualsEntry(now_seconds)), 0));
+            .or_insert_with(|| (Vector::new(_AccrualsEntry(now_seconds)), 0));
 
         for (account_id, amount) in amounts {
             event_data.amounts.push((account_id.clone(), amount));
