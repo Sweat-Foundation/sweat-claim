@@ -2,10 +2,10 @@
 
 use std::time::Duration;
 
-use claim_model::api::InitApi;
-use near_sdk::{test_utils::VMContextBuilder, testing_env, AccountId};
+use claim_model::{account_record::AccountRecordLegacy, api::InitApi, event::RecordData};
+use near_sdk::{json_types::U128, store::Vector, test_utils::VMContextBuilder, testing_env, AccountId};
 
-use crate::Contract;
+use crate::{common::now_seconds, Contract, StorageKey::AccrualsEntry};
 
 pub(crate) struct Context {
     builder: VMContextBuilder,
@@ -202,5 +202,40 @@ pub(crate) mod balance_tests {
 
         let alice_current_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
         assert_eq!(0, alice_current_balance);
+    }
+}
+
+impl Contract {
+    pub(crate) fn record_batch_for_hold_legacy(&mut self, amounts: Vec<(AccountId, U128)>) {
+        self.assert_oracle();
+
+        let now_seconds = now_seconds();
+        let mut event_data = RecordData::new(now_seconds);
+
+        let balances = self
+            .accruals
+            .entry(now_seconds)
+            .or_insert_with(|| (Vector::new(AccrualsEntry(now_seconds)), 0));
+
+        for (account_id, amount) in amounts {
+            event_data.amounts.push((account_id.clone(), amount));
+
+            let amount = amount.0;
+            let index = balances.0.len();
+
+            balances.1 += amount;
+            balances.0.push(amount);
+
+            if let Some(record) = self.accounts_legacy.get_mut(&account_id) {
+                record.accruals.push((now_seconds, index));
+            } else {
+                let record = AccountRecordLegacy {
+                    accruals: vec![(now_seconds, index)],
+                    ..AccountRecordLegacy::new(now_seconds)
+                };
+
+                self.accounts_legacy.insert(account_id, record);
+            }
+        }
     }
 }

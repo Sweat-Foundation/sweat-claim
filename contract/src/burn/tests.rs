@@ -17,7 +17,7 @@ fn test_burn_when_outdated_tokens_exist() {
     let bob_balance = 200_000;
 
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![
+    contract.record_batch_for_hold_legacy(vec![
         (accounts.alice.clone(), U128(alice_balance)),
         (accounts.bob.clone(), U128(bob_balance)),
     ]);
@@ -50,7 +50,7 @@ fn test_ext_error_on_burn_when_outdated_tokens_exist() {
     let bob_balance = 200_000;
 
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![
+    contract.record_batch_for_hold_legacy(vec![
         (accounts.alice.clone(), U128(alice_balance)),
         (accounts.bob.clone(), U128(bob_balance)),
     ]);
@@ -83,7 +83,7 @@ fn test_burn_when_outdated_tokens_don_not_exist() {
     let bob_balance = 300_000;
 
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![
+    contract.record_batch_for_hold_legacy(vec![
         (accounts.alice.clone(), U128(alice_balance)),
         (accounts.bob.clone(), U128(bob_balance)),
     ]);
