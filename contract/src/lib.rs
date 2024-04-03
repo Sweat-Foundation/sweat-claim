@@ -90,7 +90,6 @@ pub struct Contract {
     /// token transactions and operations within the contract.
     is_service_call_running: bool,
 
-    // TODO: burn this amount in burn method
     balance_to_burn: TokensAmount,
 }
 
