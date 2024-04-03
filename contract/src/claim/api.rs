@@ -124,10 +124,7 @@ impl Contract {
         return if is_success {
             // `balance_to_burn` is updated here because parallel `burn` call can modify this value.
             // In this case rolling back a user state to a previous state can lead to inconsistency.
-            self.balance_to_burn = self
-                .balance_to_burn
-                .checked_add(amount_to_burn)
-                .expect("Overflow in balance to burn");
+            self.balance_to_burn += amount_to_burn;
 
             account.claim_period_refreshed_at = now;
 

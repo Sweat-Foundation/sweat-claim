@@ -69,11 +69,7 @@ impl Balance for AccountRecord {
 
         assert!(percent_to_burn <= 100, "Invalid percent to burn: {percent_to_burn}");
 
-        self.balance
-            .checked_div(100)
-            .expect("Division error")
-            .checked_mul(100 - percent_to_burn)
-            .expect("Multiplication error")
+        (self.balance / 100) * (100 - percent_to_burn)
     }
 }
 
