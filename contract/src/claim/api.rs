@@ -6,7 +6,7 @@ use claim_model::{
 use near_sdk::{env, json_types::U128, near_bindgen, require, AccountId, PromiseOrValue};
 
 use crate::{
-    common::{now_seconds, Balance, UnixTimestampExtension},
+    common::{now_seconds, AccountAccessor, Balance, UnixTimestampExtension},
     Contract, ContractExt,
 };
 
@@ -90,7 +90,7 @@ impl ClaimApi for Contract {
             "Claim is not available at the moment"
         );
 
-        let account_data = self.get_account(&account_id);
+        let account_data = self.accounts.get_account(&account_id);
         require!(!account_data.is_locked, "Another operation is running");
 
         if account_data.balance > 0 {
@@ -98,14 +98,9 @@ impl ClaimApi for Contract {
             let amount_to_claim = account_data.get_effective_balance(now, self.burn_period);
             let amount_to_burn = account_data.balance - amount_to_claim;
 
-            let account_data = self.get_account_mut(&account_id);
+            let account_data = self.accounts.get_account_mut(&account_id);
             account_data.is_locked = true;
             account_data.balance = 0;
-
-            self.balance_to_burn = self
-                .balance_to_burn
-                .checked_add(amount_to_burn)
-                .expect("Overflow in balance to burn");
 
             self.transfer_external(now, account_id, amount_to_claim, amount_to_burn)
         } else {
@@ -123,10 +118,17 @@ impl Contract {
         amount_to_burn: TokensAmount,
         is_success: bool,
     ) -> ClaimResultView {
-        let account = self.get_account_mut(&account_id);
+        let account = self.accounts.get_account_mut(&account_id);
         account.is_locked = false;
 
-        if is_success {
+        return if is_success {
+            // `balance_to_burn` is updated here because parallel `burn` call can modify this value.
+            // In this case rolling back a user state to a previous state can lead to inconsistency.
+            self.balance_to_burn = self
+                .balance_to_burn
+                .checked_add(amount_to_burn)
+                .expect("Overflow in balance to burn");
+
             account.claim_period_refreshed_at = now;
 
             let event_data = ClaimData {
@@ -136,12 +138,12 @@ impl Contract {
             };
             emit(EventKind::Claim(event_data));
 
-            return ClaimResultView::new(amount_to_claim);
-        }
+            ClaimResultView::new(amount_to_claim)
+        } else {
+            account.balance = amount_to_claim + amount_to_burn;
 
-        account.balance = amount_to_claim + amount_to_burn;
-
-        ClaimResultView::new(0)
+            ClaimResultView::new(0)
+        };
     }
 }
 
@@ -187,23 +189,27 @@ mod prod {
             amount_to_claim: TokensAmount,
             amount_to_burn: TokensAmount,
         ) -> PromiseOrValue<ClaimResultView> {
-            let args = json!({
-                "receiver_id": account_id,
-                "amount": amount_to_claim.to_string(),
-                "memo": "",
-            })
-            .to_string()
-            .as_bytes()
-            .to_vec();
+            let callback = ext_self::ext(env::current_account_id())
+                .with_static_gas(Gas(5 * Gas::ONE_TERA.0))
+                .on_transfer(now, account_id.clone(), amount_to_claim, amount_to_burn);
 
-            Promise::new(self.token_account_id.clone())
-                .function_call("ft_transfer".to_string(), args, 1, Gas(5 * Gas::ONE_TERA.0))
-                .then(
-                    ext_self::ext(env::current_account_id())
-                        .with_static_gas(Gas(5 * Gas::ONE_TERA.0))
-                        .on_transfer(now, account_id, amount_to_claim, amount_to_burn),
-                )
-                .into()
+            if amount_to_claim > 0 {
+                let args = json!({
+                    "receiver_id": account_id.clone(),
+                    "amount": amount_to_claim.to_string(),
+                    "memo": "",
+                })
+                .to_string()
+                .as_bytes()
+                .to_vec();
+
+                Promise::new(self.token_account_id.clone())
+                    .function_call("ft_transfer".to_string(), args, 1, Gas(5 * Gas::ONE_TERA.0))
+                    .then(callback)
+                    .into()
+            } else {
+                callback.into()
+            }
         }
     }
 }

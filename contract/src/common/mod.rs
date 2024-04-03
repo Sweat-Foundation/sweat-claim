@@ -4,10 +4,9 @@ use claim_model::{
 };
 use near_sdk::{
     env::{block_timestamp_ms, panic_str},
+    store::LookupMap,
     AccountId,
 };
-
-use crate::Contract;
 
 mod asserts;
 pub(crate) mod tests;
@@ -46,23 +45,6 @@ fn convert_milliseconds_to_unix_timestamp_with_unsuccessfully() {
     let _timestamp = ms_timestamp_to_seconds(millis);
 }
 
-impl Contract {
-    pub(crate) fn get_account(&self, account_id: &AccountId) -> &AccountRecord {
-        let AccountRecordVersioned::V1(account) = self.accounts.get(account_id).expect("Account not found");
-        account
-    }
-
-    pub(crate) fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
-        if !self.accounts.contains_key(account_id) {
-            self.accounts
-                .insert(account_id.clone(), AccountRecordVersioned::new(now_seconds()));
-        }
-
-        let AccountRecordVersioned::V1(account) = self.accounts.get_mut(account_id).expect("Account not found");
-        account
-    }
-}
-
 pub(crate) trait Balance {
     fn get_effective_balance(&self, now: UnixTimestamp, burn_period: Duration) -> TokensAmount;
 }
@@ -92,5 +74,29 @@ impl Balance for AccountRecord {
             .expect("Division error")
             .checked_mul(100 - percent_to_burn)
             .expect("Multiplication error")
+    }
+}
+
+pub type AccountMap = LookupMap<AccountId, AccountRecordVersioned>;
+
+pub(crate) trait AccountAccessor {
+    fn get_account(&self, account_id: &AccountId) -> &AccountRecord;
+
+    fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord;
+}
+
+impl AccountAccessor for AccountMap {
+    fn get_account(&self, account_id: &AccountId) -> &AccountRecord {
+        let AccountRecordVersioned::V1(account) = self.get(account_id).expect("Account not found");
+        account
+    }
+
+    fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
+        if !self.contains_key(account_id) {
+            self.insert(account_id.clone(), AccountRecordVersioned::new(now_seconds()));
+        }
+
+        let AccountRecordVersioned::V1(account) = self.get_mut(account_id).expect("Account not found");
+        account
     }
 }

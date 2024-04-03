@@ -4,7 +4,10 @@ use claim_model::{
 };
 use near_sdk::{json_types::U128, near_bindgen, AccountId};
 
-use crate::{common::now_seconds, Contract, ContractExt};
+use crate::{
+    common::{now_seconds, AccountAccessor},
+    Contract, ContractExt,
+};
 
 #[near_bindgen]
 impl RecordApi for Contract {
@@ -19,7 +22,7 @@ impl RecordApi for Contract {
 
             event_data.amounts.push((account_id.clone(), amount));
 
-            let account = self.get_account_mut(&account_id);
+            let account = self.accounts.get_account_mut(&account_id);
             account.balance = account.balance.checked_add(amount.0).expect("Balance overflow");
             account.last_top_up_at = now_seconds;
         }
