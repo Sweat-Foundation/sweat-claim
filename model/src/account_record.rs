@@ -13,7 +13,6 @@ use crate::{AccrualIndex, TokensAmount, UnixTimestamp};
 /// the smart contract. It tracks various aspects of the account, such as accrual references,
 /// claim history, and operational states.
 #[derive(BorshDeserialize, BorshSerialize)]
-#[deprecated(note = "Use AccountRecordVersioned instead.")]
 pub struct AccountRecordLegacy {
     /// A list of references to accrual entries in `Contract.accruals`.
     ///
@@ -84,7 +83,7 @@ pub struct AccountRecordV1 {
 }
 
 impl AccountRecordVersioned {
-    pub fn from(account: &AccountRecordLegacy, balance: TokensAmount, last_top_up_at: UnixTimestamp) -> Self {
+    pub fn make(account: &AccountRecordLegacy, balance: TokensAmount, last_top_up_at: UnixTimestamp) -> Self {
         Self::V1(AccountRecordV1 {
             balance,
             last_top_up_at,

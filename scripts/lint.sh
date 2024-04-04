@@ -12,5 +12,7 @@ cargo clippy -p sweat_claim \
   -A clippy::module_name_repetitions \
   -A clippy::needless-pass-by-value \
   -A clippy::must-use-candidate \
+  -A clippy::missing_panics_doc \
+  -A clippy::module_inception \
   \
   -D warnings

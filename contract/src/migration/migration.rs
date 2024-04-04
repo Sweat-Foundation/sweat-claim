@@ -56,31 +56,31 @@ impl Contract {
 
 impl Contract {
     pub(crate) fn migrate_account_if_outdated(&mut self, account_id: &AccountId) {
-        if let Some(account) = self.accounts_legacy.get(account_id) {
-            let last_top_up_at = account
-                .accruals
-                .iter()
-                .map(|(datetime, _)| datetime)
-                .max()
-                .map(|value| value.clone())
-                .unwrap_or_default()
-                .clone();
+        let Some(account) = self.accounts_legacy.remove(account_id) else {
+            return;
+        };
 
-            let balance = account
-                .accruals
-                .iter()
-                .map(|(datetime, index)| {
-                    self.accruals
-                        .get(&datetime)
-                        .map(|(accruals, _)| accruals.get(index.clone()).unwrap_or(&0).clone())
-                        .unwrap_or_default()
-                })
-                .sum();
+        let last_top_up_at = account
+            .accruals
+            .iter()
+            .map(|(datetime, _)| datetime)
+            .max()
+            .copied()
+            .unwrap_or_default();
 
-            let account = AccountRecordVersioned::from(account, balance, last_top_up_at);
-            self.accounts.insert(account_id.clone(), account);
+        let balance = account
+            .accruals
+            .iter()
+            .copied()
+            .map(|(datetime, index)| {
+                self.accruals
+                    .get(&datetime)
+                    .map(|(accruals, _)| accruals.get(index).copied().unwrap_or(0))
+                    .unwrap_or_default()
+            })
+            .sum();
 
-            self.accounts_legacy.remove(account_id);
-        }
+        let account = AccountRecordVersioned::make(&account, balance, last_top_up_at);
+        self.accounts.insert(account_id.clone(), account);
     }
 }

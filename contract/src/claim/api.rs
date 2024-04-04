@@ -12,7 +12,6 @@ use crate::{
 
 #[near_bindgen]
 impl ClaimApi for Contract {
-    #[allow(deprecated)]
     fn get_claimable_balance_for_account(&self, account_id: AccountId) -> U128 {
         let now = now_seconds();
 
@@ -44,7 +43,6 @@ impl ClaimApi for Contract {
         U128(0)
     }
 
-    #[allow(deprecated)]
     fn is_claim_available(&self, account_id: AccountId) -> ClaimAvailabilityView {
         if let Some(account) = self.accounts.get(&account_id) {
             let account = account.into_latest();
@@ -121,26 +119,26 @@ impl Contract {
         let account = self.accounts.get_account_mut(&account_id);
         account.is_locked = false;
 
-        return if is_success {
-            // `balance_to_burn` is updated here because parallel `burn` call can modify this value.
-            // In this case rolling back a user state to a previous state can lead to inconsistency.
-            self.balance_to_burn += amount_to_burn;
-
-            account.claim_period_refreshed_at = now;
-
-            let event_data = ClaimData {
-                account_id,
-                claimed: U128(amount_to_claim),
-                burnt: U128(amount_to_burn),
-            };
-            emit(EventKind::Claim(event_data));
-
-            ClaimResultView::new(amount_to_claim)
-        } else {
+        // [nit]
+        if !is_success {
             account.balance = amount_to_claim + amount_to_burn;
+            return ClaimResultView::new(0);
+        }
 
-            ClaimResultView::new(0)
+        // `balance_to_burn` is updated here because parallel `burn` call can modify this value.
+        // In this case rolling back a user state to a previous state can lead to inconsistency.
+        self.balance_to_burn += amount_to_burn;
+
+        account.claim_period_refreshed_at = now;
+
+        let event_data = ClaimData {
+            account_id,
+            claimed: U128(amount_to_claim),
+            burnt: U128(amount_to_burn),
         };
+        emit(EventKind::Claim(event_data));
+
+        ClaimResultView::new(amount_to_claim)
     }
 }
 
