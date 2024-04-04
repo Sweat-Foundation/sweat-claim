@@ -31,18 +31,18 @@ impl Contract {
     fn on_burn_internal(&mut self, amount_to_burn: TokensAmount, is_success: bool) -> U128 {
         self.is_service_call_running = false;
 
-        if !is_success {
-            // If burning failed, return the amount back to the balance.
-            // Another `claim` call can increase `balance_to_burn`, so it can be non-zero at this point.
-            self.balance_to_burn += amount_to_burn;
-
-            U128(0)
-        } else {
+        if is_success {
             emit(EventKind::Burn(BurnData {
                 burnt_amount: U128(amount_to_burn),
             }));
 
             U128(amount_to_burn)
+        } else {
+            // If burning failed, return the amount back to the balance.
+            // Another `claim` call can increase `balance_to_burn`, so it can be non-zero at this point.
+            self.balance_to_burn += amount_to_burn;
+
+            U128(0)
         }
     }
 }

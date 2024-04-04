@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 use claim_model::{
     account_record::{AccountRecordLegacy, AccountRecordVersioned},
     api::InitApi,
@@ -97,7 +95,7 @@ pub struct Contract {
 enum StorageKey {
     AccountsLegacy,
     Accruals,
-    _AccrualsEntry(u32),
+    _AccrualsEntryLegacy(u32),
     Oracles,
     Accounts,
 }
