@@ -83,7 +83,7 @@ pub struct AccountRecordV1 {
 }
 
 impl AccountRecordVersioned {
-    pub fn make(account: &AccountRecordLegacy, balance: TokensAmount, last_top_up_at: UnixTimestamp) -> Self {
+    pub fn from_legacy(account: &AccountRecordLegacy, balance: TokensAmount, last_top_up_at: UnixTimestamp) -> Self {
         Self::V1(AccountRecordV1 {
             balance,
             last_top_up_at,

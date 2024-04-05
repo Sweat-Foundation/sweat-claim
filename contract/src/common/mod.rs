@@ -50,6 +50,8 @@ pub(crate) trait Balance {
 }
 
 impl Balance for AccountRecord {
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation)]
     fn get_effective_balance(&self, now: UnixTimestamp, burn_period: Duration) -> TokensAmount {
         if self.claim_period_refreshed_at.is_within_period(now, burn_period) {
             return self.balance;
@@ -65,11 +67,8 @@ impl Balance for AccountRecord {
 
         let accrual_period: f64 = (self.last_top_up_at - first_top_up_at).into();
         let period_to_burn: f64 = (claim_window_start - first_top_up_at).into();
-        // I'm not sure if it is totally safe to just silence warnings here
-        // Please check thia again and add apropriate comment if needed
-        #[allow(clippy::cast_sign_loss)]
-        #[allow(clippy::cast_possible_truncation)]
-        let percent_to_burn = ((period_to_burn / accrual_period) * 100.0) as u128;
+
+        let percent_to_burn = ((period_to_burn / accrual_period) * 100.0).ceil() as u128;
 
         assert!(percent_to_burn <= 100, "Invalid percent to burn: {percent_to_burn}");
 

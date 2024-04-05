@@ -80,7 +80,7 @@ impl Contract {
             })
             .sum();
 
-        let account = AccountRecordVersioned::make(&account, balance, last_top_up_at);
+        let account = AccountRecordVersioned::from_legacy(&account, balance, last_top_up_at);
         self.accounts.insert(account_id.clone(), account);
     }
 }
