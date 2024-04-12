@@ -2,9 +2,8 @@ use claim_model::{
     api::{AuthApiIntegration, ClaimContract, ConfigApiIntegration, InitApiIntegration},
     Duration,
 };
-use near_sdk::json_types::U128;
 use near_workspaces::Account;
-use nitka::misc::ToNear;
+use nitka::{misc::ToNear, near_sdk::json_types::U128};
 use sweat_model::{StorageManagementIntegration, SweatApiIntegration, SweatContract};
 
 const FT_CONTRACT: &str = "sweat";

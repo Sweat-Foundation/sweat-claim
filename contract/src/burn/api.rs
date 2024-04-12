@@ -90,8 +90,8 @@ impl Contract {
 pub(crate) mod prod {
     use claim_model::{TokensAmount, UnixTimestamp};
     use near_sdk::{
-        env, ext_contract, is_promise_success, json_types::U128, near_bindgen, serde_json::json, Gas, Promise,
-        PromiseOrValue,
+        env, ext_contract, is_promise_success, json_types::U128, near_bindgen, serde_json::json, Gas, NearToken,
+        Promise, PromiseOrValue,
     };
 
     use crate::{Contract, ContractExt};
@@ -123,10 +123,15 @@ pub(crate) mod prod {
             .to_vec();
 
             Promise::new(self.token_account_id.clone())
-                .function_call("burn".to_string(), args, 0, Gas(5 * Gas::ONE_TERA.0))
+                .function_call(
+                    "burn".to_string(),
+                    args,
+                    NearToken::from_yoctonear(0),
+                    Gas::from_tgas(5),
+                )
                 .then(
                     ext_self::ext(env::current_account_id())
-                        .with_static_gas(Gas(5 * Gas::ONE_TERA.0))
+                        .with_static_gas(Gas::from_tgas(5))
                         .on_burn(total_to_burn, keys_to_remove),
                 )
                 .into()

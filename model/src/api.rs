@@ -1,7 +1,6 @@
-#[cfg(feature = "release-api")]
-use near_sdk::AccountId;
-use near_sdk::{json_types::U128, PromiseOrValue};
-// #[cfg(feature = "integration-api")]
+use near_sdk::{json_types::U128, AccountId};
+#[cfg(feature = "integration-api")]
+use nitka::near_sdk;
 use nitka_proc::make_integration_version;
 
 use crate::{BurnStatus, ClaimAvailabilityView, ClaimResultView, Duration};
@@ -136,7 +135,7 @@ pub trait BurnApi {
     /// authority to initiate the burn process.
     ///
     /// Panics if another service call is running.
-    fn burn(&mut self) -> PromiseOrValue<U128>;
+    fn burn(&mut self) -> ::near_sdk::PromiseOrValue<U128>;
 
     fn get_burn_status(&self, account_id: AccountId) -> BurnStatus;
 }
@@ -211,5 +210,5 @@ pub trait ClaimApi {
     ///
     /// Panics if the claim is unavailable at the moment of calling. Users should ensure that
     /// their claim is available using the `is_claim_available` method prior to calling this.
-    fn claim(&mut self) -> PromiseOrValue<ClaimResultView>;
+    fn claim(&mut self) -> ::near_sdk::PromiseOrValue<ClaimResultView>;
 }

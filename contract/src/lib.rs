@@ -1,7 +1,6 @@
 use claim_model::{account_record::AccountRecord, api::InitApi, Duration, TokensAmount, UnixTimestamp};
 use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    near_bindgen,
+    near, near_bindgen,
     store::{LookupMap, UnorderedMap, UnorderedSet, Vector},
     AccountId, BorshStorageKey, PanicOnDefault,
 };
@@ -18,8 +17,8 @@ const INITIAL_CLAIM_PERIOD_MS: u32 = 24 * 60 * 60;
 const INITIAL_BURN_PERIOD_MS: u32 = 30 * 24 * 60 * 60;
 
 /// The main structure representing a smart contract for managing fungible tokens.
-#[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
+#[near(contract_state)]
+#[derive(PanicOnDefault)]
 pub struct Contract {
     /// The account ID of the fungible token contract serviced by this smart contract.
     ///
@@ -82,7 +81,8 @@ pub struct Contract {
     is_service_call_running: bool,
 }
 
-#[derive(BorshStorageKey, BorshSerialize)]
+#[near]
+#[derive(BorshStorageKey)]
 enum StorageKey {
     Accounts,
     Accruals,

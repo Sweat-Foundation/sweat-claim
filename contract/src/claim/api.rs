@@ -158,7 +158,8 @@ impl Contract {
 mod prod {
     use claim_model::{ClaimResultView, TokensAmount, UnixTimestamp};
     use near_sdk::{
-        env, ext_contract, is_promise_success, near_bindgen, serde_json::json, AccountId, Gas, Promise, PromiseOrValue,
+        env, ext_contract, is_promise_success, near_bindgen, serde_json::json, AccountId, Gas, NearToken, Promise,
+        PromiseOrValue,
     };
 
     use crate::{Contract, ContractExt};
@@ -206,10 +207,15 @@ mod prod {
             .to_vec();
 
             Promise::new(self.token_account_id.clone())
-                .function_call("ft_transfer".to_string(), args, 1, Gas(5 * Gas::ONE_TERA.0))
+                .function_call(
+                    "ft_transfer".to_string(),
+                    args,
+                    NearToken::from_yoctonear(1),
+                    Gas::from_tgas(5),
+                )
                 .then(
                     ext_self::ext(env::current_account_id())
-                        .with_static_gas(Gas(5 * Gas::ONE_TERA.0))
+                        .with_static_gas(Gas::from_tgas(5))
                         .on_transfer(now, account_id, total_accrual, details),
                 )
                 .into()

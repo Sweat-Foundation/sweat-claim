@@ -68,11 +68,11 @@ pub(crate) struct TestAccounts {
 impl Default for TestAccounts {
     fn default() -> Self {
         Self {
-            alice: AccountId::new_unchecked("alice".to_string()),
-            bob: AccountId::new_unchecked("bob".to_string()),
-            oracle: AccountId::new_unchecked("oracle".to_string()),
-            token: AccountId::new_unchecked("token".to_string()),
-            owner: AccountId::new_unchecked("owner".to_string()),
+            alice: "alice".to_string().try_into().unwrap(),
+            bob: "bob".to_string().try_into().unwrap(),
+            oracle: "oracle".to_string().try_into().unwrap(),
+            token: "token".to_string().try_into().unwrap(),
+            owner: "owner".to_string().try_into().unwrap(),
         }
     }
 }

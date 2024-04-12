@@ -1,7 +1,4 @@
-use near_sdk::{
-    borsh,
-    borsh::{BorshDeserialize, BorshSerialize},
-};
+use near_sdk::near;
 
 use crate::{AccrualIndex, UnixTimestamp};
 
@@ -10,7 +7,7 @@ use crate::{AccrualIndex, UnixTimestamp};
 /// `AccountRecord` maintains the status and history of an individual user's account within
 /// the smart contract. It tracks various aspects of the account, such as accrual references,
 /// claim history, and operational states.
-#[derive(BorshDeserialize, BorshSerialize)]
+#[near]
 pub struct AccountRecord {
     /// A list of references to accrual entries in `Contract.accruals`.
     ///

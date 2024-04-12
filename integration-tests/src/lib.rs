@@ -5,11 +5,13 @@ use claim_model::{
     api::{BurnApiIntegration, ClaimApiIntegration},
     ClaimAvailabilityView,
 };
-use near_sdk::{
-    json_types::{U128, U64},
-    serde_json::json,
+use nitka::{
+    misc::ToNear,
+    near_sdk::{
+        json_types::{U128, U64},
+        serde_json::json,
+    },
 };
-use nitka::misc::ToNear;
 use sweat_model::{FungibleTokenCoreIntegration, Payout, SweatApiIntegration, SweatContract, SweatDeferIntegration};
 
 use crate::{
