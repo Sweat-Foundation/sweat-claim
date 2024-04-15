@@ -1,6 +1,6 @@
 use claim_model::{
     account_record::{AccountRecord, AccountRecordVersioned},
-    Duration, TokensAmount, UnixTimestamp,
+    Duration, UnixTimestamp,
 };
 use near_sdk::{
     env::{block_timestamp_ms, panic_str},

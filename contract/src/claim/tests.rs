@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use claim_model::{
-    api::{ClaimApi, RecordApi},
+    api::{ClaimApi, ConfigApi, RecordApi},
     ClaimAvailabilityView, UnixTimestamp,
 };
 use near_sdk::{json_types::U128, PromiseOrValue};
@@ -234,4 +234,39 @@ fn test_claim_when_user_has_tokens_and_claim_period_is_passed_and_transfer_faile
 
     let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
     assert_eq!(alice_balance, alice_new_balance);
+}
+
+#[test]
+fn demo_burn() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    let alice_balance = 1_000_000;
+    context.switch_account(&accounts.oracle);
+    contract.set_burn_period(5 * 24 * 60 * 60);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+
+    let mut current_time: u64 = 0;
+
+    context.switch_account(&accounts.alice);
+    while current_time < (1.8 * contract.burn_period as f64) as u64 {
+        context.set_block_timestamp_in_seconds(current_time);
+
+        let available_for_claim = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        println!("{}, {}", current_time, available_for_claim);
+
+        current_time += 3600;
+    }
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(2_000_000))]);
+
+    context.switch_account(&accounts.alice);
+    while current_time < (4 * contract.burn_period) as u64 {
+        context.set_block_timestamp_in_seconds(current_time);
+
+        let available_for_claim = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        println!("{}, {}", current_time, available_for_claim);
+
+        current_time += 3600;
+    }
 }

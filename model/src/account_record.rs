@@ -79,9 +79,11 @@ pub struct AccountRecordV1 {
     /// How many tokens burn per second.
     pub burn_rate: TokensAmount,
     pub last_burn_at: UnixTimestamp,
+    pub burn_cache: TokensAmount,
     pub claim_period_refreshed_at: UnixTimestamp,
     pub is_enabled: bool,
     pub is_locked: bool,
+    pub burn_cache_updated_at: UnixTimestamp,
 }
 
 impl AccountRecordVersioned {
@@ -93,6 +95,7 @@ impl AccountRecordVersioned {
             last_burn_at: account.claim_period_refreshed_at,
             is_enabled: account.is_enabled,
             is_locked: account.is_locked,
+            burn_cache: 0,
         })
     }
 
@@ -119,6 +122,8 @@ impl AccountRecord {
             last_burn_at: now,
             is_enabled: true,
             is_locked: false,
+            burn_cache: 0,
+            burn_cache_updated_at: now,
         }
     }
 }

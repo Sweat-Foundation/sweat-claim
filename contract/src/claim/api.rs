@@ -1,3 +1,5 @@
+use std::cmp::{max, min};
+
 use claim_model::{
     api::ClaimApi,
     event::{emit, ClaimData, EventKind},
@@ -6,7 +8,7 @@ use claim_model::{
 use near_sdk::{env, json_types::U128, near_bindgen, require, AccountId, PromiseOrValue};
 
 use crate::{
-    common::{now_seconds, AccountAccessor, Balance, UnixTimestampExtension},
+    common::{now_seconds, AccountAccessor, UnixTimestampExtension},
     Contract, ContractExt,
 };
 
@@ -42,10 +44,16 @@ impl ClaimApi for Contract {
                 .claim_period_refreshed_at
                 .is_within_period(now, self.burn_period)
             {
-                account.burn_rate * (now - account.last_burn_at) as u128
+                let now_seconds = now_seconds();
+                let claimable_window_start = now_seconds.checked_sub(self.burn_period).unwrap_or(0);
+
+                let seconds_to_burn = claimable_window_start.checked_sub(account.last_burn_at).unwrap_or(0);
+                let amount_to_burn = account.burn_rate * seconds_to_burn as u128;
+                min(amount_to_burn, account.balance)
             } else {
                 0
             };
+
             let amount_to_claim = account.balance - amount_to_burn;
 
             return U128(amount_to_claim);
@@ -99,25 +107,27 @@ impl ClaimApi for Contract {
             "Claim is not available at the moment"
         );
 
-        let account_data = self.accounts.get_account(&account_id);
-        require!(!account_data.is_locked, "Another operation is running");
+        let account = self.accounts.get_account(&account_id);
+        require!(!account.is_locked, "Another operation is running");
 
-        if account_data.balance > 0 {
+        if account.balance > 0 {
             let now = now_seconds();
 
-            let amount_to_burn = if !account_data
+            let amount_to_burn = if !account
                 .claim_period_refreshed_at
                 .is_within_period(now, self.burn_period)
             {
-                account_data.burn_rate * (now - account_data.last_burn_at) as u128
+                let now_seconds = now_seconds();
+                let claimable_window_start = now_seconds.checked_sub(self.burn_period).unwrap_or(0);
+                account.burn_rate * (claimable_window_start - account.last_burn_at) as u128
             } else {
                 0
             };
-            let amount_to_claim = account_data.balance - amount_to_burn;
+            let amount_to_claim = account.balance - amount_to_burn;
 
-            let account_data = self.accounts.get_account_mut(&account_id);
-            account_data.is_locked = true;
-            account_data.balance = 0;
+            let account = self.accounts.get_account_mut(&account_id);
+            account.is_locked = true;
+            account.balance = 0;
 
             self.transfer_external(now, account_id, amount_to_claim, amount_to_burn)
         } else {

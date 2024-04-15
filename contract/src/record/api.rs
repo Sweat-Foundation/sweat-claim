@@ -1,3 +1,5 @@
+use std::cmp::max;
+
 use claim_model::{
     api::RecordApi,
     event::{emit, EventKind::Record, RecordAmountDetailed, RecordData},
@@ -16,7 +18,9 @@ impl RecordApi for Contract {
         self.assert_oracle();
 
         let now_seconds = now_seconds();
-        let claimable_window_start = now_seconds - self.burn_period;
+
+        // Default value can be 0 only in tests.
+        let claimable_window_start = now_seconds.checked_sub(self.burn_period).unwrap_or(0);
         let mut event_data = RecordData::new(now_seconds);
 
         for (account_id, amount) in amounts {
@@ -31,14 +35,13 @@ impl RecordApi for Contract {
             {
                 balance_to_burn = account.burn_rate * (claimable_window_start - account.last_burn_at) as u128;
                 self.balance_to_burn += balance_to_burn;
+
                 account.balance -= balance_to_burn;
+                account.last_burn_at = now_seconds;
             }
 
             account.balance += amount.0;
-            account.last_top_up_at = now_seconds;
-
             account.burn_rate = account.balance / self.burn_period as u128;
-            account.last_burn_at = now_seconds;
 
             event_data.amounts.push((
                 account_id.clone(),
