@@ -33,12 +33,12 @@ impl RecordApi for Contract {
                 .claim_period_refreshed_at
                 .is_within_period(now_seconds, self.burn_period)
             {
-                balance_to_burn = account.burn_rate * (claimable_window_start - account.last_burn_at) as u128;
+                balance_to_burn = account.burn_rate * (claimable_window_start - account.burn_since) as u128;
                 self.balance_to_burn += balance_to_burn;
 
                 account.balance -= balance_to_burn;
 
-                account.last_burn_at = claimable_window_start;
+                account.burn_since = claimable_window_start;
             }
 
             account.balance += amount.0;

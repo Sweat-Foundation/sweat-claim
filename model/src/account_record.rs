@@ -78,8 +78,7 @@ pub struct AccountRecordV1 {
     pub balance: TokensAmount,
     /// How many tokens burn per second.
     pub burn_rate: TokensAmount,
-    pub last_burn_at: UnixTimestamp,
-    pub burn_cache: Option<BurnCache>,
+    pub burn_since: UnixTimestamp,
     pub claim_period_refreshed_at: UnixTimestamp,
     pub is_enabled: bool,
     pub is_locked: bool,
@@ -91,10 +90,9 @@ impl AccountRecordVersioned {
             balance,
             burn_rate: balance / burn_period as u128,
             claim_period_refreshed_at: account.claim_period_refreshed_at,
-            last_burn_at: account.claim_period_refreshed_at,
+            burn_since: account.claim_period_refreshed_at,
             is_enabled: account.is_enabled,
             is_locked: account.is_locked,
-            burn_cache: None,
         })
     }
 
@@ -118,16 +116,9 @@ impl AccountRecord {
             balance: 0,
             burn_rate: 0,
             claim_period_refreshed_at: now,
-            last_burn_at: now,
+            burn_since: now,
             is_enabled: true,
             is_locked: false,
-            burn_cache: None,
         }
     }
-}
-
-#[derive(BorshDeserialize, BorshSerialize)]
-pub struct BurnCache {
-    pub amount: TokensAmount,
-    pub updated_at: UnixTimestamp,
 }
