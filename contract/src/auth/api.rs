@@ -22,4 +22,11 @@ impl AuthApi for Contract {
     fn get_oracles(&self) -> Vec<AccountId> {
         self.oracles.iter().cloned().collect()
     }
+
+    fn unlock_account(&mut self, account_id: AccountId) {
+        self.assert_oracle();
+
+        let account = self.accounts.get_mut(&account_id).expect("Account is not found");
+        account.is_locked = false;
+    }
 }
