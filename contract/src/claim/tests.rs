@@ -261,6 +261,19 @@ fn demo_burn() {
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(2_000_000))]);
 
     context.switch_account(&accounts.alice);
+    while current_time < (2 * contract.burn_period) as u64 {
+        context.set_block_timestamp_in_seconds(current_time);
+
+        let available_for_claim = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        println!("{}, {}", current_time, available_for_claim);
+
+        current_time += 3600;
+    }
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(1_500_000))]);
+
+    context.switch_account(&accounts.alice);
     while current_time < (4 * contract.burn_period) as u64 {
         context.set_block_timestamp_in_seconds(current_time);
 

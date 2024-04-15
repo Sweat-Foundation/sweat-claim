@@ -27,7 +27,7 @@ impl RecordApi for Contract {
             self.migrate_account_if_outdated(&account_id);
 
             let account = self.accounts.get_account_mut(&account_id);
-            let mut balance_to_burn: TokensAmount = 0;
+            let mut balance_to_burn = 0;
 
             if !account
                 .claim_period_refreshed_at
@@ -37,7 +37,8 @@ impl RecordApi for Contract {
                 self.balance_to_burn += balance_to_burn;
 
                 account.balance -= balance_to_burn;
-                account.last_burn_at = now_seconds;
+
+                account.last_burn_at = claimable_window_start;
             }
 
             account.balance += amount.0;
