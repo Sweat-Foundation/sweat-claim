@@ -161,7 +161,7 @@ fn test_claim_when_user_has_tokens_and_current_time_matches_claim_period() {
     context.switch_account(&accounts.oracle);
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
 
-    context.set_block_timestamp_in_seconds(contract.burn_period as u64);
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64);
 
     let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
     assert_eq!(0, alice_new_balance);
@@ -201,7 +201,7 @@ fn test_claim_when_user_has_tokens_and_burn_period_is_passed() {
     context.switch_account(&accounts.oracle);
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
 
-    context.set_block_timestamp_in_seconds(contract.burn_period as u64 + 100);
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
 
     context.switch_account(&accounts.alice);
     let claimed_amount = match contract.claim() {

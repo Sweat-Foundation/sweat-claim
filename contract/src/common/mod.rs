@@ -1,12 +1,14 @@
 use claim_model::{
     account_record::{AccountRecord, AccountRecordVersioned},
-    Duration, UnixTimestamp,
+    UnixTimestamp,
 };
 use near_sdk::{
     env::{block_timestamp_ms, panic_str},
     store::LookupMap,
     AccountId,
 };
+
+use crate::Contract;
 
 mod asserts;
 pub(crate) mod tests;
@@ -18,16 +20,6 @@ fn ms_timestamp_to_seconds(ms: u64) -> UnixTimestamp {
 
 pub(crate) fn now_seconds() -> UnixTimestamp {
     ms_timestamp_to_seconds(block_timestamp_ms())
-}
-
-pub(crate) trait UnixTimestampExtension {
-    fn is_within_period(&self, now: UnixTimestamp, period: Duration) -> bool;
-}
-
-impl UnixTimestampExtension for UnixTimestamp {
-    fn is_within_period(&self, now: UnixTimestamp, period: Duration) -> bool {
-        now - self < period
-    }
 }
 
 #[test]
@@ -66,5 +58,12 @@ impl AccountAccessor for AccountMap {
 
         let AccountRecordVersioned::V1(account) = self.get_mut(account_id).expect("Account not found");
         account
+    }
+}
+
+impl Contract {
+    pub(crate) fn get_claimable_window_start(&self) -> UnixTimestamp {
+        // Can be 0 only in tests.
+        now_seconds().saturating_sub(self.burn_period)
     }
 }

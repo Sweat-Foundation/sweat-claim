@@ -72,7 +72,7 @@ impl Contract {
             })
             .sum();
 
-        let account = AccountRecordVersioned::from_legacy(&account, balance, self.burn_period);
+        let account = AccountRecordVersioned::from_legacy(&account, balance);
         self.accounts.insert(account_id.clone(), account);
     }
 }

@@ -22,7 +22,7 @@ fn test_burn_when_outdated_tokens_exist() {
         (accounts.bob.clone(), U128(bob_balance)),
     ]);
 
-    context.set_block_timestamp_in_seconds(contract.burn_period as u64 + 100);
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
 
     context.switch_account(&accounts.alice);
     contract.claim();
@@ -63,7 +63,7 @@ fn test_ext_error_on_burn_when_outdated_tokens_exist() {
         (accounts.bob.clone(), U128(bob_balance)),
     ]);
 
-    context.set_block_timestamp_in_seconds(contract.burn_period as u64 + 100);
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
 
     context.switch_account(&accounts.alice);
     contract.claim();

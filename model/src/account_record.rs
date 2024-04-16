@@ -5,7 +5,7 @@ use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
 };
 
-use crate::{AccrualIndex, Duration, TokensAmount, UnixTimestamp};
+use crate::{get_burn_rate, AccrualIndex, Duration, TokensAmount, UnixTimestamp};
 
 /// Represents the state of a registered account in the smart contract.
 ///
@@ -76,8 +76,6 @@ pub enum AccountRecordVersioned {
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct AccountRecordV1 {
     pub balance: TokensAmount,
-    /// How many tokens burn per second.
-    pub burn_rate: TokensAmount,
     pub burn_since: UnixTimestamp,
     pub claim_period_refreshed_at: UnixTimestamp,
     pub is_enabled: bool,
@@ -85,10 +83,9 @@ pub struct AccountRecordV1 {
 }
 
 impl AccountRecordVersioned {
-    pub fn from_legacy(account: &AccountRecordLegacy, balance: TokensAmount, burn_period: Duration) -> Self {
+    pub fn from_legacy(account: &AccountRecordLegacy, balance: TokensAmount) -> Self {
         Self::V1(AccountRecordV1 {
             balance,
-            burn_rate: balance / burn_period as u128,
             claim_period_refreshed_at: account.claim_period_refreshed_at,
             burn_since: account.claim_period_refreshed_at,
             is_enabled: account.is_enabled,
@@ -114,11 +111,25 @@ impl AccountRecord {
     pub fn new(now: UnixTimestamp) -> Self {
         Self {
             balance: 0,
-            burn_rate: 0,
             claim_period_refreshed_at: now,
             burn_since: now,
             is_enabled: true,
             is_locked: false,
         }
+    }
+}
+
+impl AccountRecord {
+    pub fn get_balance_to_burn(&self, burn_period: Duration, claimable_window_start: UnixTimestamp) -> TokensAmount {
+        if self.claim_period_refreshed_at > claimable_window_start {
+            0
+        } else {
+            self.get_burn_rate(burn_period) * u128::from(claimable_window_start - self.burn_since)
+        }
+        .min(self.balance)
+    }
+
+    pub fn get_burn_rate(&self, burn_period: Duration) -> TokensAmount {
+        get_burn_rate(self.balance, burn_period)
     }
 }
