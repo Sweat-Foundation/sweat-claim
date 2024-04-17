@@ -35,3 +35,11 @@ impl ClaimResultView {
         Self { total: U128(total) }
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(crate = "near_sdk::serde")]
+pub struct BurnStatus {
+    pub min_claimable_ts: Option<UnixTimestamp>,
+    pub claim_period_refreshed_at: UnixTimestamp,
+    pub burn_period: Duration,
+}

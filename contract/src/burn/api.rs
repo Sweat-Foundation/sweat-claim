@@ -1,9 +1,9 @@
 use claim_model::{
     api::BurnApi,
     event::{emit, BurnData, EventKind},
-    TokensAmount, UnixTimestamp,
+    BurnStatus, TokensAmount, UnixTimestamp,
 };
-use near_sdk::{json_types::U128, near_bindgen, require, PromiseOrValue};
+use near_sdk::{env::panic_str, json_types::U128, near_bindgen, require, AccountId, PromiseOrValue};
 
 use crate::{
     common::{now_seconds, UnixTimestampExtension},
@@ -36,6 +36,27 @@ impl BurnApi for Contract {
             self.is_service_call_running = false;
 
             PromiseOrValue::Value(U128(0))
+        }
+    }
+
+    fn get_burn_status(&self, account_id: AccountId) -> BurnStatus {
+        let now = now_seconds();
+        let account = self
+            .accounts
+            .get(&account_id)
+            .unwrap_or_else(|| panic_str(format!("Account {account_id} not found").as_str()));
+        let min_claimable_ts: Option<UnixTimestamp> = account
+            .accruals
+            .iter()
+            .map(|(timestamp, _)| timestamp)
+            .filter(|timestamp| timestamp.is_within_period(now, self.burn_period))
+            .min()
+            .cloned();
+
+        BurnStatus {
+            min_claimable_ts,
+            claim_period_refreshed_at: account.claim_period_refreshed_at,
+            burn_period: self.burn_period,
         }
     }
 }

@@ -1,11 +1,10 @@
 #[cfg(feature = "release-api")]
 use near_sdk::AccountId;
 use near_sdk::{json_types::U128, PromiseOrValue};
-#[cfg(feature = "integration-api")]
-use nitka::AccountId;
+// #[cfg(feature = "integration-api")]
 use nitka_proc::make_integration_version;
 
-use crate::{ClaimAvailabilityView, ClaimResultView, Duration};
+use crate::{BurnStatus, ClaimAvailabilityView, ClaimResultView, Duration};
 
 #[cfg(feature = "integration-test")]
 pub struct ClaimContract<'a> {
@@ -138,6 +137,8 @@ pub trait BurnApi {
     ///
     /// Panics if another service call is running.
     fn burn(&mut self) -> PromiseOrValue<U128>;
+
+    fn get_burn_status(&self, account_id: AccountId) -> BurnStatus;
 }
 
 /// An API for recording (updating) user balances in the smart contract.
