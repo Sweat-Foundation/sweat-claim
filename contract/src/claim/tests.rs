@@ -1,10 +1,13 @@
 #![cfg(test)]
 
+use std::env;
+
 use claim_model::{
     api::{ClaimApi, ConfigApi, RecordApi},
-    ClaimAvailabilityView, UnixTimestamp,
+    ClaimAvailabilityView, TokensAmount, UnixTimestamp,
 };
 use near_sdk::{json_types::U128, PromiseOrValue};
+use plotters::prelude::*;
 
 use crate::{
     claim::api::test::EXT_TRANSFER_FUTURE,
@@ -242,9 +245,10 @@ fn demo_burn() {
 
     let alice_balance = 1_000_000;
     context.switch_account(&accounts.oracle);
-    contract.set_burn_period(5 * 24 * 60 * 60);
+    contract.set_burn_period(400_000);
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
 
+    let mut data: Vec<(UnixTimestamp, TokensAmount)> = vec![];
     let mut current_time: u64 = 0;
 
     context.switch_account(&accounts.alice);
@@ -252,7 +256,7 @@ fn demo_burn() {
         context.set_block_timestamp_in_seconds(current_time);
 
         let available_for_claim = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-        println!("{}, {}", current_time, available_for_claim);
+        data.push((current_time as _, available_for_claim as _));
 
         current_time += 3600;
     }
@@ -265,7 +269,7 @@ fn demo_burn() {
         context.set_block_timestamp_in_seconds(current_time);
 
         let available_for_claim = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-        println!("{}, {}", current_time, available_for_claim);
+        data.push((current_time as _, available_for_claim as _));
 
         current_time += 3600;
     }
@@ -278,8 +282,108 @@ fn demo_burn() {
         context.set_block_timestamp_in_seconds(current_time);
 
         let available_for_claim = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-        println!("{}, {}", current_time, available_for_claim);
+        data.push((current_time as _, available_for_claim as _));
 
         current_time += 3600;
     }
+
+    render_chart("SWEAT evaporating", data, "evaporating.png").unwrap()
+}
+
+#[test]
+fn demo_bur_with_claim() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    let alice_balance = 1_000_000;
+    context.switch_account(&accounts.oracle);
+    contract.set_burn_period(400_000);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+
+    let mut data: Vec<(UnixTimestamp, TokensAmount)> = vec![];
+    let mut current_time: u64 = 0;
+
+    context.switch_account(&accounts.alice);
+    while current_time < (1.8 * contract.burn_period as f64) as u64 {
+        context.set_block_timestamp_in_seconds(current_time);
+
+        let available_for_claim = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        data.push((current_time as _, available_for_claim as _));
+
+        current_time += 3600;
+    }
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(300_000))]);
+
+    context.switch_account(&accounts.alice);
+    while current_time < (2.2 * contract.burn_period as f64) as u64 {
+        context.set_block_timestamp_in_seconds(current_time);
+
+        let available_for_claim = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        data.push((current_time as _, available_for_claim as _));
+
+        current_time += 3600;
+    }
+
+    contract.claim();
+
+    while current_time < (2.5 * contract.burn_period as f64) as u64 {
+        context.set_block_timestamp_in_seconds(current_time);
+
+        let available_for_claim = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        data.push((current_time as _, available_for_claim as _));
+
+        current_time += 3600;
+    }
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(500_000))]);
+
+    while current_time < (5 * contract.burn_period) as u64 {
+        context.set_block_timestamp_in_seconds(current_time);
+
+        let available_for_claim = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+        data.push((current_time as _, available_for_claim as _));
+
+        current_time += 3600;
+    }
+
+    render_chart("SWEAT evaporating", data, "evaporating_with_claim.png").unwrap()
+}
+
+fn render_chart(
+    name: &str,
+    data: Vec<(UnixTimestamp, TokensAmount)>,
+    file_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output_file_path = format!("{}/{file_name}", env::current_dir().unwrap().display());
+
+    let root = BitMapBackend::new(output_file_path.as_str(), (1024, 768)).into_drawing_area();
+
+    root.fill(&WHITE)?;
+
+    let min_x: UnixTimestamp = data.iter().map(|(x, _)| *x).min().unwrap();
+    let max_x: UnixTimestamp = data.iter().map(|(x, _)| *x).max().unwrap();
+
+    let min_y: TokensAmount = data.iter().map(|(_, y)| *y).min().unwrap();
+    let max_y: TokensAmount = data.iter().map(|(_, y)| *y).max().unwrap();
+
+    let mut chart = ChartBuilder::on(&root)
+        .set_label_area_size(LabelAreaPosition::Left, 60)
+        .set_label_area_size(LabelAreaPosition::Bottom, 60)
+        .caption(name, ("sans-serif", 40))
+        .build_cartesian_2d(min_x..max_x, min_y..max_y)?;
+
+    chart
+        .configure_mesh()
+        .x_desc("Time (in seconds)")
+        .y_desc("$SWEAT")
+        .draw()?;
+
+    let series_data = data.iter().map(|(x, y)| (*x as u32, *y as u128));
+    let series = AreaSeries::new(series_data, 0, BLUE.mix(0.3));
+    chart.draw_series(series)?;
+
+    root.present().expect("Unable to write result to file");
+    Ok(())
 }
