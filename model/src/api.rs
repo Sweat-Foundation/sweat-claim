@@ -115,6 +115,8 @@ pub trait AuthApi {
     ///
     /// Returns a `Vec<AccountId>` containing the account IDs of the registered oracles.
     fn get_oracles(&self) -> Vec<AccountId>;
+
+    fn unlock_account(&mut self, account_id: AccountId);
 }
 
 /// An API for burning unclaimed tokens in the smart contract. This is essential for

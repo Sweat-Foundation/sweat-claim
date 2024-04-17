@@ -3953,7 +3953,7 @@ dependencies = [
 
 [[package]]
 name = "sweat_claim"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "claim-model",
  "near-sdk 4.1.1",
