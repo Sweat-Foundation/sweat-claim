@@ -36,6 +36,14 @@ impl ClaimResultView {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(crate = "near_sdk::serde")]
+pub struct BurnStatus {
+    pub min_claimable_ts: Option<UnixTimestamp>,
+    pub claim_period_refreshed_at: UnixTimestamp,
+    pub burn_period: Duration,
+}
+
 pub trait UnixTimestampExtension {
     fn is_within_period(&self, now: UnixTimestamp, period: Duration) -> bool;
 }

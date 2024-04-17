@@ -1,11 +1,14 @@
 use claim_model::{
     api::BurnApi,
     event::{emit, BurnData, EventKind},
-    TokensAmount,
+    BurnStatus, TokensAmount, UnixTimestamp, UnixTimestampExtension,
 };
-use near_sdk::{json_types::U128, near_bindgen, require, PromiseOrValue};
+use near_sdk::{json_types::U128, near_bindgen, require, AccountId, PromiseOrValue};
 
-use crate::{Contract, ContractExt};
+use crate::{
+    common::{now_seconds, AccountAccessor},
+    Contract, ContractExt,
+};
 
 #[near_bindgen]
 impl BurnApi for Contract {
@@ -23,6 +26,34 @@ impl BurnApi for Contract {
             self.burn_external(amount_to_burn)
         } else {
             PromiseOrValue::Value(U128(0))
+        }
+    }
+
+    fn get_burn_status(&self, account_id: AccountId) -> BurnStatus {
+        let now = now_seconds();
+
+        if let Some(account) = self.accounts_legacy.get(&account_id) {
+            let min_claimable_ts: Option<UnixTimestamp> = account
+                .accruals
+                .iter()
+                .map(|(timestamp, _)| timestamp)
+                .filter(|timestamp| timestamp.is_within_period(now, self.burn_period))
+                .min()
+                .cloned();
+
+            return BurnStatus {
+                min_claimable_ts,
+                claim_period_refreshed_at: account.claim_period_refreshed_at,
+                burn_period: self.burn_period,
+            };
+        }
+
+        let account = self.accounts.get_account(&account_id);
+
+        BurnStatus {
+            min_claimable_ts: None,
+            claim_period_refreshed_at: account.claim_period_refreshed_at,
+            burn_period: self.burn_period,
         }
     }
 }
