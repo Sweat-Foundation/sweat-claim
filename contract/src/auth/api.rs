@@ -1,7 +1,7 @@
 use claim_model::api::AuthApi;
 use near_sdk::{env::log_str, near_bindgen, require, AccountId};
 
-use crate::{Contract, ContractExt};
+use crate::{common::AccountAccessor, Contract, ContractExt};
 
 #[near_bindgen]
 impl AuthApi for Contract {
@@ -26,7 +26,11 @@ impl AuthApi for Contract {
     fn unlock_account(&mut self, account_id: AccountId) {
         self.assert_oracle();
 
-        let account = self.accounts.get_mut(&account_id).expect("Account is not found");
+        if let Some(account) = self.accounts_legacy.get_mut(&account_id) {
+            account.is_locked = false;
+        }
+
+        let account = self.accounts.get_account_mut(&account_id);
         account.is_locked = false;
     }
 }
