@@ -15,5 +15,6 @@ integration-api = ["claim-model/integration-api"]
 
 [dependencies]
 near-sdk = { workspace = true }
+charming = "0.3.1"
 
 claim-model = { workspace = true }
