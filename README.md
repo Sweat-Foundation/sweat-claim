@@ -128,28 +128,26 @@ application.
 
 ## Evaporating
 
-A contract user is expected to claim their $SWEAT regularly. The time frame for lossless claiming is defined in
-`burn_period` property of the Contract. If a user doesn't claim their $SWEAT within the defined time frame,
-their balance starts to _evaporate_ with linear speed which is calculated as:
+A contract user is expected to claim their $SWEAT regularly. The time frame for lossless claiming is defined in the
+burn_period property of the contract. If a user doesn't claim their $SWEAT within the defined time frame, their balance
+starts to diminish at a linear rate, which is calculated as:
 
 ```
 burn_rate = balance / burn_period
 ```
 
-I.e. if a user has 1 $SWEAT, it will be available for claim during `burn_period` and then it will start to evaporate,
-and will finally turn to 0 after `2 * burn_period`.
+I.e., if a user has 1 $SWEAT, it will be available for claim during the burn_period, and then it will start
+to evaporate, finally reaching 0 after 2 * burn_period.
 
 ![evaporating.png](doc/evaporating.png)
 
-Each balance top up resets the evaporating timer, but doesn't cancel it. The next figure shows how the balance changes
-after each top up
-during claimable period and after evaporating starts. Note that before evaporating starts, the balance increases in
-steps.
-But once evaporating starts, the balance decreases before each top up, and the speed of balance growth decreases as
-well.
+Each balance top-up resets the evaporating timer but doesn't cancel it. The next figure shows how the balance
+changes after each top-up during the claimable period and after evaporating starts. Note that before evaporating
+starts, the balance increases in steps. However, once evaporating starts, the balance decreases before each top-up,
+and the speed of balance growth decreases as well.
 
 ![evaporating_continuous.png](doc/evaporating_continuous.png)
 
-Once the used claims their $SWEAT, the balance is reset to 0 and the evaporating timer is reset as well.
+Once the user claims their $SWEAT, the balance is reset to 0, and the evaporating timer is reset as well.
 
 ![evaporating_with_claim.png](doc/evaporating_with_claim.png)

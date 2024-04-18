@@ -116,6 +116,20 @@ pub trait AuthApi {
     /// Returns a `Vec<AccountId>` containing the account IDs of the registered oracles.
     fn get_oracles(&self) -> Vec<AccountId>;
 
+    /// Unlocks the specified account.
+    ///
+    /// This method allows an oracle to unlock an account that may have been locked due to an error
+    /// occurring during a cross-contract call. When a cross-contract call fails, the account might
+    /// be locked to prevent further operations until the error is resolved.
+    ///
+    /// # Arguments
+    ///
+    /// * `account_id` - The ID of the account to be unlocked.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if it is called by someone other than the oracle or if the specified
+    /// account is not found.
     fn unlock_account(&mut self, account_id: AccountId);
 }
 
@@ -138,6 +152,19 @@ pub trait BurnApi {
     /// Panics if another service call is running.
     fn burn(&mut self) -> PromiseOrValue<U128>;
 
+    /// Retrieves the burn status for a given account.
+    ///
+    /// This method returns a `BurnStatus` struct containing data required to calculate
+    /// when a user's balance will start evaporating. The `account_id` parameter specifies
+    /// the ID of the account for which the burn status is requested.
+    ///
+    /// # Arguments
+    ///
+    /// * `account_id` - The ID of the account for which to retrieve burn status.
+    ///
+    /// # Returns
+    ///
+    /// A `BurnStatus` struct containing information about the burn status of the account.
     fn get_burn_status(&self, account_id: AccountId) -> BurnStatus;
 }
 
