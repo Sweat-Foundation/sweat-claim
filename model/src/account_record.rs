@@ -83,11 +83,11 @@ pub struct AccountRecordV1 {
 }
 
 impl AccountRecordVersioned {
-    pub fn from_legacy(account: &AccountRecordLegacy, balance: TokensAmount) -> Self {
+    pub fn from_legacy(account: &AccountRecordLegacy, balance: TokensAmount, burn_since: UnixTimestamp) -> Self {
         Self::V1(AccountRecordV1 {
             balance,
+            burn_since,
             claim_period_refreshed_at: account.claim_period_refreshed_at,
-            burn_since: account.claim_period_refreshed_at,
             is_enabled: account.is_enabled,
             is_locked: account.is_locked,
         })

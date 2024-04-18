@@ -4218,6 +4218,7 @@ dependencies = [
  "claim-model",
  "near-sdk 4.1.1",
  "plotters",
+ "rand 0.8.5",
 ]
 
 [[package]]
