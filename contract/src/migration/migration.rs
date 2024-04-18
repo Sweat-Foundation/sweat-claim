@@ -80,7 +80,7 @@ impl Contract {
             }
         }
 
-        let burn_since = max(account.claim_period_refreshed_at, now - self.burn_period);
+        let burn_since = max(account.claim_period_refreshed_at, self.get_claimable_window_start());
         let account = AccountRecordVersioned::from_legacy(&account, account_balance, burn_since);
 
         self.accounts.insert(account_id.clone(), account);
