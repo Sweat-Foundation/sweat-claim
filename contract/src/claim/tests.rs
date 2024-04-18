@@ -1,11 +1,10 @@
 #![cfg(test)]
 
 use claim_model::{
-    api::{ClaimApi, ConfigApi, RecordApi},
-    ClaimAvailabilityView, TokensAmount, UnixTimestamp,
+    api::{ClaimApi, RecordApi},
+    ClaimAvailabilityView, UnixTimestamp,
 };
 use near_sdk::{json_types::U128, PromiseOrValue};
-use plotters::prelude::*;
 
 use crate::{
     claim::api::test::EXT_TRANSFER_FUTURE,
@@ -436,8 +435,9 @@ mod demo {
         let max_y: TokensAmount = data.iter().map(|(_, y)| *y).max().unwrap();
 
         let mut chart = ChartBuilder::on(&root)
-            .set_label_area_size(LabelAreaPosition::Left, 60)
-            .set_label_area_size(LabelAreaPosition::Bottom, 60)
+            .set_label_area_size(LabelAreaPosition::Left, 100)
+            .set_label_area_size(LabelAreaPosition::Bottom, 40)
+            .margin(10)
             .caption(name, ("sans-serif", 40))
             .build_cartesian_2d(min_x..max_x, min_y..max_y)?;
 
@@ -445,6 +445,10 @@ mod demo {
             .configure_mesh()
             .x_desc("Time (in seconds)")
             .y_desc("$SWEAT")
+            .y_label_formatter(&|value| {
+                let label = (value / 10u128.pow(17)) as f64 / 10.0;
+                format!("{:.1}", label)
+            })
             .draw()?;
 
         let series_data = data.iter().map(|(x, y)| (*x as u32, *y as u128));
