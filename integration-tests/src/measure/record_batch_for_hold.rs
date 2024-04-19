@@ -59,7 +59,7 @@ async fn single_record_batch_for_hold() -> Result<()> {
 }
 
 async fn measure_record_batch_for_hold(count: usize) -> Result<Gas> {
-    let mut context = prepare_contract().await?;
+    let mut context = prepare_contract(None, None).await?;
 
     let oracle = context.manager().await?;
 

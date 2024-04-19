@@ -1,8 +1,10 @@
 #![allow(deprecated)]
 
+use std::cmp::max;
+
 use claim_model::{
     account_record::{AccountRecordLegacy, AccountRecordVersioned},
-    Duration, TokensAmount, UnixTimestamp,
+    Duration, TokensAmount, UnixTimestamp, UnixTimestampExtension,
 };
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -11,7 +13,7 @@ use near_sdk::{
     AccountId, PanicOnDefault,
 };
 
-use crate::{Contract, ContractExt, StorageKey};
+use crate::{common::now_seconds, Contract, ContractExt, StorageKey};
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -60,27 +62,28 @@ impl Contract {
             return;
         };
 
-        let last_top_up_at = account
-            .accruals
-            .iter()
-            .map(|(datetime, _)| datetime)
-            .max()
-            .copied()
-            .unwrap_or_default();
+        let now = now_seconds();
+        let mut account_balance: TokensAmount = 0;
+        let mut balance_to_burn: TokensAmount = 0;
 
-        let balance = account
-            .accruals
-            .iter()
-            .copied()
-            .map(|(datetime, index)| {
-                self.accruals
-                    .get(&datetime)
-                    .map(|(accruals, _)| accruals.get(index).copied().unwrap_or(0))
-                    .unwrap_or_default()
-            })
-            .sum();
+        for (timestamp, accrual_index) in &account.accruals {
+            let amount = self
+                .accruals
+                .get(timestamp)
+                .map(|(accruals, _)| accruals.get(*accrual_index).copied().unwrap_or(0))
+                .unwrap_or_default();
 
-        let account = AccountRecordVersioned::from_legacy(&account, balance, last_top_up_at);
+            if timestamp.is_within_period(now, self.burn_period) {
+                account_balance += amount;
+            } else {
+                balance_to_burn += amount;
+            }
+        }
+
+        let burn_since = max(account.claim_period_refreshed_at, self.get_claimable_window_start());
+        let account = AccountRecordVersioned::from_legacy(&account, account_balance, burn_since);
+
         self.accounts.insert(account_id.clone(), account);
+        self.balance_to_burn += balance_to_burn;
     }
 }

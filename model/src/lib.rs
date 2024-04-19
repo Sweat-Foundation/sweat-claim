@@ -43,3 +43,22 @@ pub struct BurnStatus {
     pub claim_period_refreshed_at: UnixTimestamp,
     pub burn_period: Duration,
 }
+
+pub trait UnixTimestampExtension {
+    fn is_within_period(&self, now: UnixTimestamp, period: Duration) -> bool;
+}
+
+impl UnixTimestampExtension for UnixTimestamp {
+    fn is_within_period(&self, now: UnixTimestamp, period: Duration) -> bool {
+        now - self < period
+    }
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)]
+pub fn get_burn_rate(balance: TokensAmount, burn_period: Duration) -> TokensAmount {
+    (balance as f64 / f64::from(burn_period)).ceil() as u128
+}

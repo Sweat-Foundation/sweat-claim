@@ -23,7 +23,9 @@ mod prepare;
 
 #[tokio::test]
 async fn happy_flow() -> anyhow::Result<()> {
-    let mut context = prepare_contract().await?;
+    let claim_period = 5 * 60;
+    let burn_period = 20 * 60;
+    let mut context = prepare_contract(Some(claim_period), Some(burn_period)).await?;
 
     let alice = context.alice().await?;
     let manager = context.manager().await?;
@@ -59,12 +61,10 @@ async fn happy_flow() -> anyhow::Result<()> {
     let is_claim_available = context.sweat_claim().is_claim_available(alice.to_near()).await?;
     assert!(matches!(is_claim_available, ClaimAvailabilityView::Unavailable(_)));
 
-    context
-        .fast_forward_hours((CLAIM_PERIOD / (60 * 60) + 1) as u64)
-        .await?;
+    context.fast_forward_minutes((claim_period / 60) as u64).await?;
 
     let is_claim_available = context.sweat_claim().is_claim_available(alice.to_near()).await?;
-    assert_eq!(is_claim_available, ClaimAvailabilityView::Available(1));
+    assert_eq!(is_claim_available, ClaimAvailabilityView::Available(0));
 
     context.sweat_claim().claim().with_user(&alice).await?;
 
@@ -77,7 +77,9 @@ async fn happy_flow() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn burn() -> anyhow::Result<()> {
-    let mut context = prepare_contract().await?;
+    let claim_period = 60;
+    let burn_period = 2 * 60;
+    let mut context = prepare_contract(Some(claim_period), Some(burn_period)).await?;
 
     let manager = context.manager().await?;
     let alice = context.alice().await?;
@@ -106,7 +108,9 @@ async fn burn() -> anyhow::Result<()> {
     let burn_result = context.sweat_claim().burn().with_user(&manager).await?;
     assert_eq!(0, burn_result.0);
 
-    context.fast_forward_hours((BURN_PERIOD / (60 * 60) + 1) as u64).await?;
+    context.fast_forward_minutes((2 * burn_period) as u64).await?;
+
+    context.sweat_claim().claim().with_user(&alice).await?;
 
     let burn_result = context.sweat_claim().burn().with_user(&manager).await?;
     assert_eq!(target_payout.amount_for_user, burn_result.0);
@@ -121,98 +125,8 @@ async fn burn() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn outdate() -> anyhow::Result<()> {
-    let mut context = prepare_contract().await?;
-
-    let manager = context.manager().await?;
-    let alice = context.alice().await?;
-
-    let mut steps_since_tge = 0;
-    let alice_steps = 10_000;
-
-    let (_, target_effective_token_amount, _) = context
-        .ft_contract()
-        .formula_detailed(U64(steps_since_tge), alice_steps)
-        .await?;
-
-    context
-        .ft_contract()
-        .defer_batch(
-            vec![(alice.to_near(), alice_steps)],
-            context.sweat_claim().contract.as_account().to_near(),
-        )
-        .with_user(&manager)
-        .await?;
-    steps_since_tge += alice_steps as u64;
-
-    let alice_deferred_balance = context
-        .sweat_claim()
-        .get_claimable_balance_for_account(alice.to_near())
-        .await?;
-    assert_eq!(target_effective_token_amount, alice_deferred_balance);
-
-    context.fast_forward_hours((BURN_PERIOD / (60 * 60) + 1) as u64).await?;
-
-    let alice_deferred_balance = context
-        .sweat_claim()
-        .get_claimable_balance_for_account(alice.to_near())
-        .await?;
-    assert_eq!(0, alice_deferred_balance.0);
-
-    let (_, target_outdated_effective_token_amount, _) = context
-        .ft_contract()
-        .formula_detailed(U64(steps_since_tge), alice_steps)
-        .await?;
-
-    context
-        .ft_contract()
-        .defer_batch(
-            vec![(alice.to_near(), alice_steps)],
-            context.sweat_claim().contract.as_account().to_near(),
-        )
-        .with_user(&manager)
-        .await?;
-    steps_since_tge += alice_steps as u64;
-
-    context.fast_forward_hours(2).await?;
-
-    let (_, target_effective_token_amount, _) = context
-        .ft_contract()
-        .formula_detailed(U64(steps_since_tge), alice_steps)
-        .await?;
-
-    context
-        .ft_contract()
-        .defer_batch(
-            vec![(alice.to_near(), alice_steps)],
-            context.sweat_claim().contract.as_account().to_near(),
-        )
-        .with_user(&manager)
-        .await?;
-
-    let alice_deferred_balance = context
-        .sweat_claim()
-        .get_claimable_balance_for_account(alice.to_near())
-        .await?;
-    assert_eq!(
-        target_effective_token_amount.0 + target_outdated_effective_token_amount.0,
-        alice_deferred_balance.0
-    );
-
-    context.fast_forward_hours((BURN_PERIOD / (60 * 60) - 1) as u64).await?;
-
-    let alice_deferred_balance = context
-        .sweat_claim()
-        .get_claimable_balance_for_account(alice.to_near())
-        .await?;
-    assert_eq!(target_effective_token_amount, alice_deferred_balance);
-
-    Ok(())
-}
-
-#[tokio::test]
 async fn on_burn_direct_call() -> anyhow::Result<()> {
-    let mut context = prepare_contract().await?;
+    let mut context = prepare_contract(None, None).await?;
 
     let alice = context.alice().await?;
 
@@ -234,7 +148,7 @@ async fn on_burn_direct_call() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn on_transfer_direct_call() -> anyhow::Result<()> {
-    let mut context = prepare_contract().await?;
+    let mut context = prepare_contract(None, None).await?;
 
     let alice = context.alice().await?;
 
