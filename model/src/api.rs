@@ -1,7 +1,8 @@
 #[cfg(feature = "release-api")]
 use near_sdk::AccountId;
 use near_sdk::{json_types::U128, PromiseOrValue};
-// #[cfg(feature = "integration-api")]
+#[cfg(not(feature = "release-api"))]
+use nitka::AccountId;
 use nitka_proc::make_integration_version;
 
 use crate::{BurnStatus, ClaimAvailabilityView, ClaimResultView, Duration};
