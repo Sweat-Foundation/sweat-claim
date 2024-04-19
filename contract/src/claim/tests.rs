@@ -8,7 +8,10 @@ use near_sdk::{json_types::U128, PromiseOrValue};
 
 use crate::{
     claim::api::test::EXT_TRANSFER_FUTURE,
-    common::tests::{data::set_test_future_success, Context},
+    common::{
+        tests::{data::set_test_future_success, Context},
+        AccountAccessor,
+    },
 };
 
 #[test]
@@ -343,6 +346,30 @@ fn test_claim_when_user_has_tokens_and_claim_period_is_passed_and_transfer_faile
 
     let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
     assert_eq!(alice_balance, alice_new_balance);
+}
+
+#[test]
+fn test_claim_when_user_has_fully_evaporated_balance() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    let alice_top_up = 500_000_000;
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_top_up))]);
+
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
+
+    context.switch_account(&accounts.alice);
+    let claimed_amount = match contract.claim() {
+        PromiseOrValue::Promise(_) => panic!("Expected value"),
+        PromiseOrValue::Value(value) => value,
+    };
+    assert_eq!(0, claimed_amount.total.0);
+
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+    assert_eq!(0, alice_new_balance);
+
+    assert_eq!(alice_top_up, contract.balance_to_burn);
+    assert!(!contract.accounts.get_account(&accounts.alice).is_locked);
 }
 
 mod demo {

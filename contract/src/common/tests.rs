@@ -5,7 +5,7 @@ use std::time::Duration;
 use claim_model::{
     account_record::AccountRecordLegacy,
     api::InitApi,
-    event::{emit, EventKind::Record, RecordData},
+    event::{emit, EventKind::Record, RecordAmountDetailed, RecordData},
 };
 use near_sdk::{json_types::U128, store::Vector, test_utils::VMContextBuilder, testing_env, AccountId};
 
@@ -197,7 +197,13 @@ impl Contract {
             .or_insert_with(|| (Vector::new(_AccrualsEntryLegacy(now_seconds)), 0));
 
         for (account_id, amount) in amounts {
-            event_data.amounts.push((account_id.clone(), amount));
+            event_data.amounts.push((
+                account_id.clone(),
+                RecordAmountDetailed {
+                    credited: amount,
+                    burnt: U128(0),
+                },
+            ));
 
             let amount = amount.0;
             let index = balances.0.len();
