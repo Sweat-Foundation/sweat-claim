@@ -69,7 +69,7 @@ impl Contract {
         for (timestamp, accrual_index) in &account.accruals {
             let amount = self
                 .accruals
-                .get(&timestamp)
+                .get(timestamp)
                 .map(|(accruals, _)| accruals.get(*accrual_index).copied().unwrap_or(0))
                 .unwrap_or_default();
 
