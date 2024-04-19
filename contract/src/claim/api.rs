@@ -1,12 +1,12 @@
 use claim_model::{
     api::ClaimApi,
     event::{emit, ClaimData, EventKind},
-    ClaimAvailabilityView, ClaimResultView, TokensAmount, UnixTimestamp,
+    ClaimAvailabilityView, ClaimResultView, TokensAmount, UnixTimestamp, UnixTimestampExtension,
 };
 use near_sdk::{env, json_types::U128, near_bindgen, require, AccountId, PromiseOrValue};
 
 use crate::{
-    common::{now_seconds, AccountAccessor, Balance, UnixTimestampExtension},
+    common::{now_seconds, AccountAccessor},
     Contract, ContractExt,
 };
 
@@ -37,7 +37,11 @@ impl ClaimApi for Contract {
 
         if let Some(account) = self.accounts.get(&account_id) {
             let account = account.into_latest();
-            return U128(account.get_effective_balance(now, self.burn_period));
+
+            let amount_to_burn = account.get_balance_to_burn(self.burn_period, self.get_claimable_window_start());
+            let amount_to_claim = account.balance - amount_to_burn;
+
+            return U128(amount_to_claim);
         }
 
         U128(0)
@@ -88,27 +92,30 @@ impl ClaimApi for Contract {
             "Claim is not available at the moment"
         );
 
-        let account_data = self.accounts.get_account(&account_id);
-        require!(!account_data.is_locked, "Another operation is running");
+        let account = self.accounts.get_account(&account_id);
+        require!(!account.is_locked, "Another operation is running");
 
-        if account_data.balance > 0 {
-            let now = now_seconds();
-            let amount_to_claim = account_data.get_effective_balance(now, self.burn_period);
-            let amount_to_burn = account_data.balance - amount_to_claim;
-
-            let account_data = self.accounts.get_account_mut(&account_id);
-            account_data.is_locked = true;
-            account_data.balance = 0;
-
-            self.transfer_external(now, account_id, amount_to_claim, amount_to_burn)
-        } else {
-            PromiseOrValue::Value(ClaimResultView::new(0))
+        if account.balance == 0 {
+            return PromiseOrValue::Value(ClaimResultView::new(0));
         }
+
+        let amount_to_burn = account.get_balance_to_burn(self.burn_period, self.get_claimable_window_start());
+        let amount_to_claim = account.balance - amount_to_burn;
+
+        let account = self.accounts.get_account_mut(&account_id);
+        account.balance = 0;
+
+        if amount_to_claim == 0 {
+            return PromiseOrValue::Value(self.on_claim_result(now_seconds(), account_id, 0, amount_to_burn, true));
+        }
+
+        account.is_locked = true;
+        self.transfer_external(now_seconds(), account_id, amount_to_claim, amount_to_burn)
     }
 }
 
 impl Contract {
-    fn on_transfer_internal(
+    fn on_claim_result(
         &mut self,
         now: UnixTimestamp,
         account_id: AccountId,
@@ -119,7 +126,6 @@ impl Contract {
         let account = self.accounts.get_account_mut(&account_id);
         account.is_locked = false;
 
-        // [nit]
         if !is_success {
             account.balance = amount_to_claim + amount_to_burn;
             return ClaimResultView::new(0);
@@ -130,6 +136,7 @@ impl Contract {
         self.balance_to_burn += amount_to_burn;
 
         account.claim_period_refreshed_at = now;
+        account.burn_since = now;
 
         let event_data = ClaimData {
             account_id,
@@ -172,7 +179,7 @@ mod prod {
             amount_to_claim: TokensAmount,
             amount_to_burn: TokensAmount,
         ) -> ClaimResultView {
-            self.on_transfer_internal(now, account_id, amount_to_claim, amount_to_burn, is_promise_success())
+            self.on_claim_result(now, account_id, amount_to_claim, amount_to_burn, is_promise_success())
         }
     }
 
@@ -184,27 +191,25 @@ mod prod {
             amount_to_claim: TokensAmount,
             amount_to_burn: TokensAmount,
         ) -> PromiseOrValue<ClaimResultView> {
+            assert!(amount_to_claim > 0, "Cannot transfer zero tokens");
+
             let callback = ext_self::ext(env::current_account_id())
                 .with_static_gas(Gas(5 * Gas::ONE_TERA.0))
                 .on_transfer(now, account_id.clone(), amount_to_claim, amount_to_burn);
 
-            if amount_to_claim > 0 {
-                let args = json!({
-                    "receiver_id": account_id.clone(),
-                    "amount": amount_to_claim.to_string(),
-                    "memo": "",
-                })
-                .to_string()
-                .as_bytes()
-                .to_vec();
+            let args = json!({
+                "receiver_id": account_id.clone(),
+                "amount": amount_to_claim.to_string(),
+                "memo": "",
+            })
+            .to_string()
+            .as_bytes()
+            .to_vec();
 
-                Promise::new(self.token_account_id.clone())
-                    .function_call("ft_transfer".to_string(), args, 1, Gas(5 * Gas::ONE_TERA.0))
-                    .then(callback)
-                    .into()
-            } else {
-                callback.into()
-            }
+            Promise::new(self.token_account_id.clone())
+                .function_call("ft_transfer".to_string(), args, 1, Gas(5 * Gas::ONE_TERA.0))
+                .then(callback)
+                .into()
         }
     }
 }
@@ -226,7 +231,7 @@ pub(crate) mod test {
             amount_to_claim: TokensAmount,
             amount_to_burn: TokensAmount,
         ) -> PromiseOrValue<ClaimResultView> {
-            PromiseOrValue::Value(self.on_transfer_internal(
+            PromiseOrValue::Value(self.on_claim_result(
                 now,
                 account_id,
                 amount_to_claim,

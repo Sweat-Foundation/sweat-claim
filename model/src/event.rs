@@ -43,7 +43,14 @@ pub struct CleanData {
 #[serde(crate = "near_sdk::serde")]
 pub struct RecordData {
     pub timestamp: UnixTimestamp,
-    pub amounts: Vec<(AccountId, U128)>,
+    pub amounts: Vec<(AccountId, RecordAmountDetailed)>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(crate = "near_sdk::serde")]
+pub struct RecordAmountDetailed {
+    pub credited: U128,
+    pub burnt: U128,
 }
 
 impl RecordData {

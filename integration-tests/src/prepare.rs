@@ -44,7 +44,10 @@ impl IntegrationContext for Context {
     }
 }
 
-pub async fn prepare_contract() -> anyhow::Result<Context> {
+pub async fn prepare_contract(
+    claim_period: Option<Duration>,
+    burn_period: Option<Duration>,
+) -> anyhow::Result<Context> {
     let mut context = Context::new(&[FT_CONTRACT, SWEAT_CLAIM], true, "build-integration".into()).await?;
     let manager = context.manager().await?;
     let alice = context.alice().await?;
@@ -79,12 +82,12 @@ pub async fn prepare_contract() -> anyhow::Result<Context> {
 
     context
         .sweat_claim()
-        .set_claim_period(CLAIM_PERIOD)
+        .set_claim_period(claim_period.unwrap_or(CLAIM_PERIOD))
         .with_user(&manager)
         .await?;
     context
         .sweat_claim()
-        .set_burn_period(BURN_PERIOD)
+        .set_burn_period(burn_period.unwrap_or(BURN_PERIOD))
         .with_user(&manager)
         .await?;
 

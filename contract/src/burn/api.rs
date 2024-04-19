@@ -1,12 +1,12 @@
 use claim_model::{
     api::BurnApi,
     event::{emit, BurnData, EventKind},
-    BurnStatus, TokensAmount, UnixTimestamp,
+    BurnStatus, TokensAmount, UnixTimestamp, UnixTimestampExtension,
 };
 use near_sdk::{json_types::U128, near_bindgen, require, AccountId, PromiseOrValue};
 
 use crate::{
-    common::{now_seconds, AccountAccessor, UnixTimestampExtension},
+    common::{now_seconds, AccountAccessor},
     Contract, ContractExt,
 };
 
@@ -39,7 +39,7 @@ impl BurnApi for Contract {
                 .map(|(timestamp, _)| timestamp)
                 .filter(|timestamp| timestamp.is_within_period(now, self.burn_period))
                 .min()
-                .cloned();
+                .copied();
 
             return BurnStatus {
                 min_claimable_ts,
