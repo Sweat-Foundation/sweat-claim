@@ -261,4 +261,44 @@ mod account_record_tests {
         // Precise value is 1_102_292_768_959,4356261023
         assert_eq!(1_102_292_768_960, account.get_burn_rate(burn_period));
     }
+
+    #[test]
+    fn test_balance_to_burn_when_balance_doesnt_evaporate() {
+        let burn_period = 30 * 24 * 60 * 60; // 30 days
+
+        let mut account = AccountRecord::new(0);
+        account.balance = 2 * 10u128.pow(18);
+        account.claim_period_refreshed_at = burn_period / 2;
+
+        let balance_to_burn = account.get_balance_to_burn(burn_period, 0);
+        assert_eq!(0, balance_to_burn);
+    }
+
+    #[test]
+    fn test_balance_to_burn_when_balance_evaporates() {
+        let burn_period = 1_000;
+
+        let mut account = AccountRecord::new(0);
+        // User claimed their funds
+        account.claim_period_refreshed_at = 1_713_880_390;
+        account.burn_since = account.claim_period_refreshed_at;
+        // And then earned some $SWEAT
+        account.balance = 1_000;
+
+        let claimable_window_start = 1_713_880_400; // 10 seconds after last claim
+        let balance_to_burn = account.get_balance_to_burn(burn_period, claimable_window_start);
+        assert_eq!(10, balance_to_burn);
+    }
+
+    #[test]
+    fn test_balance_to_burn_when_balance_evaporated_to_zer() {
+        let burn_period = 5 * 24 * 60 * 60; // 5 days
+
+        let mut account = AccountRecord::new(0);
+        account.balance = 5_000;
+
+        let claimable_window_start = 3 * burn_period; // 3 burn periods later
+        let balance_to_burn = account.get_balance_to_burn(burn_period, claimable_window_start);
+        assert_eq!(account.balance, balance_to_burn);
+    }
 }
