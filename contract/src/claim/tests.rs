@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use claim_model::{
-    api::{ClaimApi, RecordApi},
+    api::{ClaimApi, ConfigApi, RecordApi},
     ClaimAvailabilityView, UnixTimestamp,
 };
 use near_sdk::{json_types::U128, PromiseOrValue};
@@ -370,6 +370,31 @@ fn test_claim_when_user_has_fully_evaporated_balance() {
 
     assert_eq!(alice_top_up, contract.balance_to_burn);
     assert!(!contract.accounts.get_account(&accounts.alice).is_locked);
+}
+
+#[test]
+fn test_claim_when_user_has_zero_balance() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    context.switch_account(&accounts.oracle);
+    contract.set_claim_period(0);
+
+    let alice_top_up_1 = 100;
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_top_up_1))]);
+
+    context.switch_account(&accounts.alice);
+    let claimed_amount = match contract.claim() {
+        PromiseOrValue::Promise(_) => panic!("Expected value"),
+        PromiseOrValue::Value(value) => value,
+    };
+    assert_eq!(alice_top_up_1, claimed_amount.total.0);
+
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
+    let claimed_amount = match contract.claim() {
+        PromiseOrValue::Promise(_) => panic!("Expected value"),
+        PromiseOrValue::Value(value) => value,
+    };
+    assert_eq!(0, claimed_amount.total.0);
 }
 
 mod demo {

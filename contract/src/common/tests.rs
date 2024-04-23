@@ -302,3 +302,14 @@ mod account_record_tests {
         assert_eq!(account.balance, balance_to_burn);
     }
 }
+
+#[cfg(test)]
+mod contract_common_tests {
+    use crate::Contract;
+
+    #[test]
+    #[should_panic(expected = "The contract is not initialized")]
+    fn should_test_on_default() {
+        Contract::default();
+    }
+}
