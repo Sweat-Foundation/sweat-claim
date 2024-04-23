@@ -1,11 +1,10 @@
 #![cfg(test)]
 
-use std::time::Duration;
-
 use claim_model::{
     account_record::AccountRecordLegacy,
     api::InitApi,
     event::{emit, EventKind::Record, RecordAmountDetailed, RecordData},
+    Duration, TokensAmount,
 };
 use near_sdk::{json_types::U128, store::Vector, test_utils::VMContextBuilder, testing_env, AccountId};
 
@@ -13,6 +12,14 @@ use crate::{common::now_seconds, Contract, StorageKey::_AccrualsEntryLegacy};
 
 pub(crate) struct Context {
     builder: VMContextBuilder,
+}
+
+pub(crate) fn days_to_seconds(days: u64) -> Duration {
+    (days * 24 * 60 * 60) as Duration
+}
+
+pub(crate) fn sweat_to_atto(sweat: u128) -> TokensAmount {
+    sweat * 10u128.pow(18)
 }
 
 impl Context {
@@ -51,10 +58,10 @@ impl Context {
     }
 
     pub(crate) fn set_block_timestamp_in_seconds(&mut self, seconds: u64) {
-        self.set_block_timestamp(Duration::from_secs(seconds));
+        self.set_block_timestamp(std::time::Duration::from_secs(seconds));
     }
 
-    fn set_block_timestamp(&mut self, duration: Duration) {
+    fn set_block_timestamp(&mut self, duration: std::time::Duration) {
         self.builder.block_timestamp(duration.as_nanos() as u64);
         testing_env!(self.builder.build());
     }
