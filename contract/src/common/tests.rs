@@ -226,3 +226,39 @@ impl Contract {
         emit(Record(event_data));
     }
 }
+
+#[cfg(test)]
+mod account_record_tests {
+    use claim_model::account_record::AccountRecord;
+
+    #[test]
+    fn test_burn_rate_for_multiple_balance() {
+        let burn_period = 100_000_000;
+
+        let mut account = AccountRecord::new(0);
+        account.balance = 10u128.pow(18);
+
+        assert_eq!(10_000_000_000, account.get_burn_rate(burn_period));
+    }
+
+    #[test]
+    fn test_burn_rate_for_minimal_balance_with_long_burn_period() {
+        let burn_period = 30 * 24 * 60 * 60; // 30 days
+
+        let mut account = AccountRecord::new(0);
+        account.balance = 1;
+
+        assert_eq!(1, account.get_burn_rate(burn_period));
+    }
+
+    #[test]
+    fn test_burn_rate_rounding() {
+        let burn_period = 21 * 24 * 60 * 60; // 21 days
+
+        let mut account = AccountRecord::new(0);
+        account.balance = 2 * 10u128.pow(18);
+
+        // Precise value is 1_102_292_768_959,4356261023
+        assert_eq!(1_102_292_768_960, account.get_burn_rate(burn_period));
+    }
+}
