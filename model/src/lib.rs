@@ -1,18 +1,15 @@
+use near_sdk::{json_types::U128, serde::Serialize};
+
 pub mod account_record;
 pub mod api;
 pub mod event;
-
-use near_sdk::{
-    json_types::U128,
-    serde::{Deserialize, Serialize},
-};
 
 pub type UnixTimestamp = u32;
 pub type AccrualIndex = u32;
 pub type TokensAmount = u128;
 pub type Duration = u32; // Period in seconds
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq)]
 #[serde(crate = "near_sdk::serde", tag = "type", content = "data", rename_all = "snake_case")]
 pub enum ClaimAvailabilityView {
     /// Claim is available. Wrapped number is the amount of claimable entries.
@@ -24,7 +21,7 @@ pub enum ClaimAvailabilityView {
     Unregistered,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ClaimResultView {
     pub total: U128,
@@ -36,7 +33,7 @@ impl ClaimResultView {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct BurnStatus {
     pub min_claimable_ts: Option<UnixTimestamp>,

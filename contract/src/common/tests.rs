@@ -1,14 +1,25 @@
 #![cfg(test)]
 
-use std::time::Duration;
+use claim_model::{
+    account_record::AccountRecordLegacy,
+    api::InitApi,
+    event::{emit, EventKind::Record, RecordAmountDetailed, RecordData},
+    Duration, TokensAmount,
+};
+use near_sdk::{json_types::U128, store::Vector, test_utils::VMContextBuilder, testing_env, AccountId};
 
-use claim_model::api::InitApi;
-use near_sdk::{test_utils::VMContextBuilder, testing_env, AccountId};
-
-use crate::Contract;
+use crate::{common::now_seconds, Contract, StorageKey::_AccrualsEntryLegacy};
 
 pub(crate) struct Context {
     builder: VMContextBuilder,
+}
+
+pub(crate) fn days_to_seconds(days: u64) -> Duration {
+    (days * 24 * 60 * 60) as Duration
+}
+
+pub(crate) fn sweat_to_atto(sweat: u128) -> TokensAmount {
+    sweat * 10u128.pow(18)
 }
 
 impl Context {
@@ -47,10 +58,10 @@ impl Context {
     }
 
     pub(crate) fn set_block_timestamp_in_seconds(&mut self, seconds: u64) {
-        self.set_block_timestamp(Duration::from_secs(seconds));
+        self.set_block_timestamp(std::time::Duration::from_secs(seconds));
     }
 
-    fn set_block_timestamp(&mut self, duration: Duration) {
+    fn set_block_timestamp(&mut self, duration: std::time::Duration) {
         self.builder.block_timestamp(duration.as_nanos() as u64);
         testing_env!(self.builder.build());
     }
@@ -177,5 +188,135 @@ pub(crate) mod balance_tests {
                 alice_current_balance
             );
         }
+    }
+}
+
+impl Contract {
+    pub(crate) fn record_batch_for_hold_legacy(&mut self, amounts: Vec<(AccountId, U128)>) {
+        self.assert_oracle();
+
+        let now_seconds = now_seconds();
+        let mut event_data = RecordData::new(now_seconds);
+
+        let balances = self
+            .accruals
+            .entry(now_seconds)
+            .or_insert_with(|| (Vector::new(_AccrualsEntryLegacy(now_seconds)), 0));
+
+        for (account_id, amount) in amounts {
+            event_data.amounts.push((
+                account_id.clone(),
+                RecordAmountDetailed {
+                    credited: amount,
+                    burnt: U128(0),
+                },
+            ));
+
+            let amount = amount.0;
+            let index = balances.0.len();
+
+            balances.1 += amount;
+            balances.0.push(amount);
+
+            if let Some(record) = self.accounts_legacy.get_mut(&account_id) {
+                record.accruals.push((now_seconds, index));
+            } else {
+                let record = AccountRecordLegacy {
+                    accruals: vec![(now_seconds, index)],
+                    ..AccountRecordLegacy::new(now_seconds)
+                };
+
+                self.accounts_legacy.insert(account_id, record);
+            }
+        }
+
+        emit(Record(event_data));
+    }
+}
+
+#[cfg(test)]
+mod account_record_tests {
+    use claim_model::account_record::AccountRecord;
+
+    #[test]
+    fn test_burn_rate_for_multiple_balance() {
+        let burn_period = 100_000_000;
+
+        let mut account = AccountRecord::new(0);
+        account.balance = 10u128.pow(18);
+
+        assert_eq!(10_000_000_000, account.get_burn_rate(burn_period));
+    }
+
+    #[test]
+    fn test_burn_rate_for_minimal_balance_with_long_burn_period() {
+        let burn_period = 30 * 24 * 60 * 60; // 30 days
+
+        let mut account = AccountRecord::new(0);
+        account.balance = 1;
+
+        assert_eq!(1, account.get_burn_rate(burn_period));
+    }
+
+    #[test]
+    fn test_burn_rate_rounding() {
+        let burn_period = 21 * 24 * 60 * 60; // 21 days
+
+        let mut account = AccountRecord::new(0);
+        account.balance = 2 * 10u128.pow(18);
+
+        // Precise value is 1_102_292_768_959,4356261023
+        assert_eq!(1_102_292_768_960, account.get_burn_rate(burn_period));
+    }
+
+    #[test]
+    fn test_balance_to_burn_when_balance_doesnt_evaporate() {
+        let burn_period = 30 * 24 * 60 * 60; // 30 days
+
+        let mut account = AccountRecord::new(0);
+        account.balance = 2 * 10u128.pow(18);
+        account.claim_period_refreshed_at = burn_period / 2;
+
+        let balance_to_burn = account.get_balance_to_burn(burn_period, 0);
+        assert_eq!(0, balance_to_burn);
+    }
+
+    #[test]
+    fn test_balance_to_burn_when_balance_evaporates() {
+        let burn_period = 1_000;
+
+        let mut account = AccountRecord::new(0);
+        // User claimed their funds
+        account.claim_period_refreshed_at = 1_713_880_390;
+        account.burn_since = account.claim_period_refreshed_at;
+        // And then earned some $SWEAT
+        account.balance = 1_000;
+
+        let claimable_window_start = 1_713_880_400; // 10 seconds after last claim
+        let balance_to_burn = account.get_balance_to_burn(burn_period, claimable_window_start);
+        assert_eq!(10, balance_to_burn);
+    }
+
+    #[test]
+    fn test_balance_to_burn_when_balance_evaporated_to_zer() {
+        let burn_period = 5 * 24 * 60 * 60; // 5 days
+
+        let mut account = AccountRecord::new(0);
+        account.balance = 5_000;
+
+        let claimable_window_start = 3 * burn_period; // 3 burn periods later
+        let balance_to_burn = account.get_balance_to_burn(burn_period, claimable_window_start);
+        assert_eq!(account.balance, balance_to_burn);
+    }
+}
+
+#[cfg(test)]
+mod contract_common_tests {
+    use crate::Contract;
+
+    #[test]
+    #[should_panic(expected = "The contract is not initialized")]
+    fn should_test_on_default() {
+        Contract::default();
     }
 }

@@ -12,7 +12,7 @@ use crate::{get_burn_rate, AccrualIndex, Duration, TokensAmount, UnixTimestamp};
 /// `AccountRecord` maintains the status and history of an individual user's account within
 /// the smart contract. It tracks various aspects of the account, such as accrual references,
 /// claim history, and operational states.
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
 pub struct AccountRecordLegacy {
     /// A list of references to accrual entries in `Contract.accruals`.
     ///

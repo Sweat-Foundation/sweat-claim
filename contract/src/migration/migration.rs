@@ -10,13 +10,13 @@ use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     env, near_bindgen,
     store::{LookupMap, UnorderedMap, UnorderedSet, Vector},
-    AccountId, PanicOnDefault,
+    AccountId,
 };
 
 use crate::{common::now_seconds, Contract, ContractExt, StorageKey};
 
 #[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
+#[derive(BorshDeserialize, BorshSerialize)]
 pub struct OldState {
     token_account_id: AccountId,
     oracles: UnorderedSet<AccountId>,
