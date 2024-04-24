@@ -30,7 +30,7 @@ impl AuthApi for Contract {
             account.is_locked = false;
         }
 
-        let account = self.accounts.get_account_mut(&account_id);
+        let account = self.accounts.get_or_insert_account_mut(&account_id);
         account.is_locked = false;
     }
 }

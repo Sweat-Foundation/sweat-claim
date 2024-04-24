@@ -104,7 +104,7 @@ fn unlock_account_by_oracle() {
 
     context.switch_account(&accounts.oracle);
     contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))]);
-    contract.accounts.get_account_mut(&alice_id).is_locked = true;
+    contract.accounts.get_or_insert_account_mut(&alice_id).is_locked = true;
 
     contract.unlock_account(alice_id.clone());
 
@@ -119,7 +119,7 @@ fn unlock_account_not_by_oracle() {
 
     context.switch_account(&alice_id);
     contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))]);
-    contract.accounts.get_account_mut(&alice_id).is_locked = true;
+    contract.accounts.get_or_insert_account_mut(&alice_id).is_locked = true;
 
     contract.unlock_account(alice_id.clone());
 }
