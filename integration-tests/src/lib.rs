@@ -14,15 +14,16 @@ use sweat_model::{FungibleTokenCoreIntegration, Payout, SweatApiIntegration, Swe
 
 use crate::{
     common::PanicFinder,
-    prepare::{prepare_contract, IntegrationContext, BURN_PERIOD, CLAIM_PERIOD},
+    prepare::{prepare_contract, IntegrationContext},
 };
 
 mod common;
 mod measure;
+mod migration;
 mod prepare;
 
 #[tokio::test]
-async fn happy_flow() -> anyhow::Result<()> {
+async fn happy_flow() -> Result<()> {
     let claim_period = 5 * 60;
     let burn_period = 20 * 60;
     let mut context = prepare_contract(Some(claim_period), Some(burn_period)).await?;
@@ -76,7 +77,7 @@ async fn happy_flow() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn burn() -> anyhow::Result<()> {
+async fn burn() -> Result<()> {
     let claim_period = 60;
     let burn_period = 2 * 60;
     let mut context = prepare_contract(Some(claim_period), Some(burn_period)).await?;
@@ -125,7 +126,7 @@ async fn burn() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn on_burn_direct_call() -> anyhow::Result<()> {
+async fn on_burn_direct_call() -> Result<()> {
     let mut context = prepare_contract(None, None).await?;
 
     let alice = context.alice().await?;
@@ -147,7 +148,7 @@ async fn on_burn_direct_call() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn on_transfer_direct_call() -> anyhow::Result<()> {
+async fn on_transfer_direct_call() -> Result<()> {
     let mut context = prepare_contract(None, None).await?;
 
     let alice = context.alice().await?;
