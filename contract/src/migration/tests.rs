@@ -5,6 +5,7 @@ use claim_model::{
     UnixTimestamp,
 };
 use near_sdk::json_types::U128;
+use claim_model::api::MigrationApi;
 
 use crate::common::tests::{days_to_seconds, sweat_to_atto, Context};
 

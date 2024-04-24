@@ -241,3 +241,10 @@ pub trait ClaimApi {
     /// their claim is available using the `is_claim_available` method prior to calling this.
     fn claim(&mut self) -> PromiseOrValue<ClaimResultView>;
 }
+
+#[make_integration_version]
+pub trait MigrationApi {
+    fn migrate() -> Self;
+
+    fn migrate_accounts(&mut self, accounts: Vec<AccountId>);
+}
