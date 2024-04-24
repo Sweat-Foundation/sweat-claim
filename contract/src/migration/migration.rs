@@ -4,6 +4,7 @@ use std::cmp::max;
 
 use claim_model::{
     account_record::{AccountRecordLegacy, AccountRecordVersioned},
+    api::MigrationApi,
     Duration, TokensAmount, UnixTimestamp, UnixTimestampExtension,
 };
 use near_sdk::{
@@ -28,10 +29,10 @@ pub struct OldState {
 }
 
 #[near_bindgen]
-impl Contract {
+impl MigrationApi for Contract {
     #[private]
     #[init(ignore_state)]
-    pub fn migrate() -> Self {
+    fn migrate() -> Self {
         let old_state: OldState = env::state_read().expect("Failed to read old state");
 
         Self {
@@ -47,7 +48,7 @@ impl Contract {
         }
     }
 
-    pub fn migrate_accounts(&mut self, accounts: Vec<AccountId>) {
+    fn migrate_accounts(&mut self, accounts: Vec<AccountId>) {
         self.assert_oracle();
 
         for account_id in accounts {
