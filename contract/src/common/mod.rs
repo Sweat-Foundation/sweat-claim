@@ -47,6 +47,8 @@ pub type AccountMap = LookupMap<AccountId, AccountRecordVersioned>;
 pub(crate) trait AccountAccessor {
     fn get_account(&self, account_id: &AccountId) -> &AccountRecord;
 
+    fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord;
+
     fn get_or_insert_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord;
 }
 
@@ -56,13 +58,17 @@ impl AccountAccessor for AccountMap {
         account
     }
 
+    fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
+        let AccountRecordVersioned::V1(account) = self.get_mut(account_id).expect("Account not found");
+        account
+    }
+
     fn get_or_insert_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
         if !self.contains_key(account_id) {
             self.insert(account_id.clone(), AccountRecordVersioned::new(now_seconds()));
         }
 
-        let AccountRecordVersioned::V1(account) = self.get_mut(account_id).expect("Account not found");
-        account
+        self.get_account_mut(account_id)
     }
 }
 

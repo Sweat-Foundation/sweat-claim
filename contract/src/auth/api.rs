@@ -28,9 +28,11 @@ impl AuthApi for Contract {
 
         if let Some(account) = self.accounts_legacy.get_mut(&account_id) {
             account.is_locked = false;
+
+            return;
         }
 
-        let account = self.accounts.get_or_insert_account_mut(&account_id);
+        let account = self.accounts.get_account_mut(&account_id);
         account.is_locked = false;
     }
 }

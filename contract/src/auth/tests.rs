@@ -112,6 +112,16 @@ fn unlock_account_by_oracle() {
 }
 
 #[test]
+#[should_panic(expected = "Account not found")]
+fn unlock_not_existing_account_by_oracle() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    let alice_id = accounts.alice;
+
+    context.switch_account(&accounts.oracle);
+    contract.unlock_account(alice_id.clone());
+}
+
+#[test]
 #[should_panic(expected = "Only oracle can do this")]
 fn unlock_account_not_by_oracle() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
