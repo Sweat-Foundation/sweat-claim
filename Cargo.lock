@@ -1881,6 +1881,7 @@ dependencies = [
  "claim-model",
  "maplit",
  "near-contract-standards",
+ "near-gas",
  "near-sdk 4.1.1",
  "near-units",
  "near-workspaces",

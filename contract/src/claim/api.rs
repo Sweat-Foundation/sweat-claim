@@ -153,10 +153,14 @@ impl Contract {
 mod prod {
     use claim_model::{ClaimResultView, TokensAmount, UnixTimestamp};
     use near_sdk::{
-        env, ext_contract, is_promise_success, near_bindgen, serde_json::json, AccountId, Gas, Promise, PromiseOrValue,
+        env, ext_contract, is_promise_success, near_bindgen, require, serde_json::json, AccountId, Gas, Promise,
+        PromiseOrValue,
     };
 
-    use crate::{Contract, ContractExt};
+    use crate::{common::asserts::assert_enough_gas, Contract, ContractExt};
+
+    const GAS_FOR_TRANSFER: Gas = Gas(5 * Gas::ONE_TERA.0);
+    const GAS_FOR_TRANSFER_CALLBACK: Gas = Gas(5 * Gas::ONE_TERA.0);
 
     #[ext_contract(ext_self)]
     pub trait SelfCallback {
@@ -191,10 +195,11 @@ mod prod {
             amount_to_claim: TokensAmount,
             amount_to_burn: TokensAmount,
         ) -> PromiseOrValue<ClaimResultView> {
-            assert!(amount_to_claim > 0, "Cannot transfer zero tokens");
+            require!(amount_to_claim > 0, "Cannot transfer zero tokens");
+            assert_enough_gas(GAS_FOR_TRANSFER + GAS_FOR_TRANSFER_CALLBACK);
 
             let callback = ext_self::ext(env::current_account_id())
-                .with_static_gas(Gas(5 * Gas::ONE_TERA.0))
+                .with_static_gas(GAS_FOR_TRANSFER_CALLBACK)
                 .on_transfer(now, account_id.clone(), amount_to_claim, amount_to_burn);
 
             let args = json!({
@@ -207,7 +212,7 @@ mod prod {
             .to_vec();
 
             Promise::new(self.token_account_id.clone())
-                .function_call("ft_transfer".to_string(), args, 1, Gas(5 * Gas::ONE_TERA.0))
+                .function_call("ft_transfer".to_string(), args, 1, GAS_FOR_TRANSFER)
                 .then(callback)
                 .into()
         }

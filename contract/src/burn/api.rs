@@ -82,11 +82,14 @@ impl Contract {
 pub(crate) mod prod {
     use claim_model::TokensAmount;
     use near_sdk::{
-        env, ext_contract, is_promise_success, json_types::U128, near_bindgen, serde_json::json, Gas, Promise,
+        env, ext_contract, is_promise_success, json_types::U128, near_bindgen, require, serde_json::json, Gas, Promise,
         PromiseOrValue,
     };
 
-    use crate::{Contract, ContractExt};
+    use crate::{common::asserts::assert_enough_gas, Contract, ContractExt};
+
+    const GAS_FOR_BURN: Gas = Gas(5 * Gas::ONE_TERA.0);
+    const GAS_FOR_BURN_CALLBACK: Gas = Gas(5 * Gas::ONE_TERA.0);
 
     #[ext_contract(ext_self)]
     pub trait SelfCallback {
@@ -103,6 +106,9 @@ pub(crate) mod prod {
 
     impl Contract {
         pub(crate) fn burn_external(&mut self, amount_to_burn: TokensAmount) -> PromiseOrValue<U128> {
+            require!(amount_to_burn > 0, "Nothing to burn");
+            assert_enough_gas(GAS_FOR_BURN + GAS_FOR_BURN_CALLBACK);
+
             let args = json!({
                 "amount": U128(amount_to_burn),
             })
@@ -111,10 +117,10 @@ pub(crate) mod prod {
             .to_vec();
 
             Promise::new(self.token_account_id.clone())
-                .function_call("burn".to_string(), args, 0, Gas(5 * Gas::ONE_TERA.0))
+                .function_call("burn".to_string(), args, 0, GAS_FOR_BURN)
                 .then(
                     ext_self::ext(env::current_account_id())
-                        .with_static_gas(Gas(5 * Gas::ONE_TERA.0))
+                        .with_static_gas(GAS_FOR_BURN_CALLBACK)
                         .on_burn(amount_to_burn),
                 )
                 .into()

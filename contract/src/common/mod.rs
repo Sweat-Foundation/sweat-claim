@@ -3,15 +3,20 @@ use claim_model::{
     UnixTimestamp,
 };
 use near_sdk::{
+    env,
     env::{block_timestamp_ms, panic_str},
     store::LookupMap,
-    AccountId,
+    AccountId, Gas,
 };
 
 use crate::Contract;
 
-mod asserts;
+pub(crate) mod asserts;
 pub(crate) mod tests;
+
+pub(crate) fn remaining_gas() -> Gas {
+    env::prepaid_gas() - env::used_gas()
+}
 
 fn ms_timestamp_to_seconds(ms: u64) -> UnixTimestamp {
     u32::try_from(ms / 1000)

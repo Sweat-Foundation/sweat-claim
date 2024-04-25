@@ -5,6 +5,7 @@ use claim_model::{
     api::{BurnApiIntegration, ClaimApiIntegration},
     ClaimAvailabilityView,
 };
+use near_gas::NearGas;
 use near_sdk::{
     json_types::{U128, U64},
     serde_json::json,
@@ -167,6 +168,76 @@ async fn on_transfer_direct_call() -> Result<()> {
         .into_result();
 
     assert!(result.has_panic("Method on_transfer is private"));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn insufficient_gas_on_claim() -> Result<()> {
+    let claim_period = 0;
+    let burn_period = 60 * 60;
+    let mut context = prepare_contract(Some(claim_period), Some(burn_period)).await?;
+
+    let alice = context.alice().await?;
+    let manager = context.manager().await?;
+
+    let alice_steps = 10_000;
+    context
+        .ft_contract()
+        .defer_batch(
+            vec![(alice.to_near(), alice_steps)],
+            context.sweat_claim().contract.as_account().to_near(),
+        )
+        .with_user(&manager)
+        .await?;
+
+    let is_claim_available = context.sweat_claim().is_claim_available(alice.to_near()).await?;
+    assert_eq!(is_claim_available, ClaimAvailabilityView::Available(0));
+
+    let result = alice
+        .call(context.sweat_claim().contract.as_account().id(), "claim")
+        .gas(NearGas::from_tgas(9))
+        .transact()
+        .await?
+        .into_result();
+
+    assert!(result.has_panic("Not enough gas for further operations"));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn insufficient_gas_on_burn() -> Result<()> {
+    let claim_period = 0;
+    let burn_period = 1;
+    let mut context = prepare_contract(Some(claim_period), Some(burn_period)).await?;
+
+    let alice = context.alice().await?;
+    let manager = context.manager().await?;
+
+    let alice_steps = 10_000;
+    context
+        .ft_contract()
+        .defer_batch(
+            vec![(alice.to_near(), alice_steps)],
+            context.sweat_claim().contract.as_account().to_near(),
+        )
+        .with_user(&manager)
+        .await?;
+
+    context.fast_forward_minutes(1).await?;
+
+    // All the tokens must evaporate at the moment
+    context.sweat_claim().claim().with_user(&alice).await?;
+
+    let result = manager
+        .call(context.sweat_claim().contract.as_account().id(), "burn")
+        .gas(NearGas::from_tgas(9))
+        .transact()
+        .await?
+        .into_result();
+
+    assert!(result.has_panic("Not enough gas for further operations"));
 
     Ok(())
 }
