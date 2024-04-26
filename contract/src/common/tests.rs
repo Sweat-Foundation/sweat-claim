@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 use claim_model::api::InitApi;
 use near_sdk::{test_utils::VMContextBuilder, testing_env, AccountId};
@@ -68,11 +68,11 @@ pub(crate) struct TestAccounts {
 impl Default for TestAccounts {
     fn default() -> Self {
         Self {
-            alice: "alice".to_string().try_into().unwrap(),
-            bob: "bob".to_string().try_into().unwrap(),
-            oracle: "oracle".to_string().try_into().unwrap(),
-            token: "token".to_string().try_into().unwrap(),
-            owner: "owner".to_string().try_into().unwrap(),
+            alice: AccountId::from_str("alice").unwrap(),
+            bob: AccountId::from_str("bob").unwrap(),
+            oracle: AccountId::from_str("oracle").unwrap(),
+            token: AccountId::from_str("token").unwrap(),
+            owner: AccountId::from_str("owner").unwrap(),
         }
     }
 }

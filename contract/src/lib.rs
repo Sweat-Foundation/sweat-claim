@@ -1,3 +1,5 @@
+// TODO: migrate to new containers from near-sdk 5
+#![allow(deprecated)]
 use claim_model::{account_record::AccountRecord, api::InitApi, Duration, TokensAmount, UnixTimestamp};
 use near_sdk::{
     near, near_bindgen,

@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+use std::str::FromStr;
+
 use anyhow::Result;
 use claim_model::api::RecordApiIntegration;
 use near_workspaces::types::Gas;
@@ -65,7 +67,7 @@ async fn measure_record_batch_for_hold(count: usize) -> Result<Gas> {
     let records: Vec<(AccountId, U128)> = (0..count)
         .map(|i| {
             (
-                format!("acc_{i}sdasaddsaadsdasdsadsa").try_into().unwrap(),
+                AccountId::from_str(&format!("acc_{i}sdasaddsaadsdasdsadsa")).unwrap(),
                 U128(i as u128),
             )
         })

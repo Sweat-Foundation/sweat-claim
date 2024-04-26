@@ -24,7 +24,7 @@ mod measure;
 mod prepare;
 
 #[tokio::test]
-async fn happy_flow() -> anyhow::Result<()> {
+async fn happy_flow() -> Result<()> {
     let mut context = prepare_contract().await?;
 
     let alice = context.alice().await?;
@@ -78,7 +78,7 @@ async fn happy_flow() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn burn() -> anyhow::Result<()> {
+async fn burn() -> Result<()> {
     let mut context = prepare_contract().await?;
 
     let manager = context.manager().await?;
@@ -213,7 +213,7 @@ async fn outdate() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn on_burn_direct_call() -> anyhow::Result<()> {
+async fn on_burn_direct_call() -> Result<()> {
     let mut context = prepare_contract().await?;
 
     let alice = context.alice().await?;
