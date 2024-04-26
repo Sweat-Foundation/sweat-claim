@@ -1624,7 +1624,6 @@ dependencies = [
  "claim-model",
  "maplit",
  "near-contract-standards 5.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "near-sdk 5.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "near-units",
  "near-workspaces",
  "nitka 0.4.0",

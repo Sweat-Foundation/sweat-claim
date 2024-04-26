@@ -9,7 +9,6 @@ name = "integration_tests"
 
 [dev-dependencies]
 near-workspaces = { workspace = true }
-near-sdk = { workspace = true }
 near-contract-standards = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true }
