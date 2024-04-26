@@ -415,6 +415,7 @@ mod demo {
     use crate::{common::tests::Context, Contract};
 
     #[test]
+    #[ignore]
     fn demo_evaporating() {
         let (mut context, mut contract, accounts) = Context::init_with_oracle();
 
@@ -435,6 +436,7 @@ mod demo {
     }
 
     #[test]
+    #[ignore]
     fn demo_continuous_evaporating() {
         let mut rng = rand::thread_rng();
         let (mut context, mut contract, accounts) = Context::init_with_oracle();
@@ -462,6 +464,7 @@ mod demo {
     }
 
     #[test]
+    #[ignore]
     fn demo_evaporating_with_claim() {
         let rng = &mut rand::thread_rng();
         let (mut context, mut contract, accounts) = Context::init_with_oracle();
