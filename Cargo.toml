@@ -11,11 +11,11 @@ rand = "0.8.5"
 anyhow = "1.0.79"
 tokio = "1.36"
 
-nitka = "0.3.0"
-nitka-proc = "0.3.0"
+nitka = "0.4.0"
+nitka-proc = "0.4.0"
 
 claim-model = { path = "model" }
-sweat-model = { git = "https://github.com/sweatco/sweat-near", rev = "eb9947f95359df8f007575e16636705f79edb01d" }
+sweat-model = { git = "https://github.com/sweatco/sweat-near", rev = "537ef7d0aa3bf58d87b77a1c9660b2d0299b6c00" }
 
 near-workspaces = "0.10.0"
 near-sdk = "5.1.0"
