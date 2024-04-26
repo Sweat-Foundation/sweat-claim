@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Test
+      - name: Lint
         run: make lint
 
   test:
@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Lint
+      - name: Test
         run: make test
 
   integration-tests:
