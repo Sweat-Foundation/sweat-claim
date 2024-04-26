@@ -23,8 +23,16 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Lint
+      - name: Test
         run: make lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Lint
+        run: make test
 
   integration-tests:
     runs-on: ubuntu-latest
