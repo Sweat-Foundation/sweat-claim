@@ -667,7 +667,7 @@ dependencies = [
 
 [[package]]
 name = "claim-model"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "near-sdk 4.1.1",
@@ -4214,7 +4214,7 @@ dependencies = [
 
 [[package]]
 name = "sweat_claim"
-version = "1.0.3"
+version = "2.0.0"
 dependencies = [
  "claim-model",
  "near-sdk 4.1.1",
