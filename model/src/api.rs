@@ -5,7 +5,7 @@ use near_sdk::{json_types::U128, PromiseOrValue};
 use nitka::AccountId;
 use nitka_proc::make_integration_version;
 
-use crate::{BurnStatus, ClaimAvailabilityView, ClaimResultView, Duration};
+use crate::{BurnStatus, ClaimAvailabilityView, ClaimResultView, Duration, UnixTimestamp};
 
 #[cfg(feature = "integration-test")]
 pub struct ClaimContract<'a> {
@@ -247,4 +247,6 @@ pub trait MigrationApi {
     fn migrate() -> Self;
 
     fn migrate_accounts(&mut self, accounts: Vec<AccountId>);
+
+    fn cleanup(&mut self, keys: Vec<UnixTimestamp>);
 }

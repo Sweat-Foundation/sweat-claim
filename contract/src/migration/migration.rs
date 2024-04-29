@@ -55,6 +55,15 @@ impl MigrationApi for Contract {
             self.migrate_account_if_outdated(&account_id);
         }
     }
+
+    fn cleanup(&mut self, keys: Vec<UnixTimestamp>) {
+        self.assert_oracle();
+
+        for key in keys {
+            self.accruals.get_mut(&key).unwrap().0.clear();
+            self.accruals.remove(&key);
+        }
+    }
 }
 
 impl Contract {
