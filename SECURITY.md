@@ -12,3 +12,4 @@ Sweat Economy engages 3rd party companies to conduct independent security audits
 As these 3rd party audits are completed and issues are sufficiently addressed, we make those audit reports public.
 
 - **[January 2024 – Hacken](http://wp.hacken.io/wp-content/uploads/2024/01/Hacken_The-Sweat-Foundation-Ltd._SCA-Sweatco_Claim_Dec2023_P-2023-071_6_20240119-10_38.pdf)**
+- **[April 2024 – Guvenkaya](https://github.com/Guvenkaya/public-reports/blob/master/The-Sweat-Foundation-Ltd-Burn-Model-NEAR-Rust-Smart-Contract-Security-Assessment.pdf)**
