@@ -60,8 +60,10 @@ impl MigrationApi for Contract {
         self.assert_oracle();
 
         for key in keys {
-            self.accruals.get_mut(&key).unwrap().0.clear();
-            self.accruals.remove(&key);
+            if let Some(accruals_entry) = self.accruals.get_mut(&key) {
+                accruals_entry.0.clear();
+                self.accruals.remove(&key);
+            }
         }
     }
 }
