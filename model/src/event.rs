@@ -87,7 +87,7 @@ pub fn emit(event: EventKind) {
 
 impl SweatClaimEvent {
     fn to_json_string(&self) -> String {
-        serde_json::to_string_pretty(self)
+        serde_json::to_string(self)
             .unwrap_or_else(|err| env::panic_str(&format!("Failed to serialize SweatClaimEvent: {err}")))
     }
 
