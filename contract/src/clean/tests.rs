@@ -3,7 +3,10 @@
 use claim_model::api::RecordApi;
 use near_sdk::json_types::U128;
 
-use crate::{clean::api::CleanApi, common::tests::Context};
+use crate::{
+    clean::api::CleanApi,
+    common::{tests::Context, AccountAccessor},
+};
 
 #[test]
 fn test_clean_single_account_by_oracle() {
@@ -12,7 +15,7 @@ fn test_clean_single_account_by_oracle() {
 
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(100_000_000))]);
 
-    let record = contract.accounts.get(&accounts.alice).unwrap().into_latest();
+    let record = contract.accounts.get_account(&accounts.alice);
     assert_ne!(0, record.balance);
 
     contract.clean(vec![accounts.alice.clone()]);
@@ -29,7 +32,7 @@ fn test_clean_single_account_by_not_oracle() {
 
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(100_000_000))]);
 
-    let record = contract.accounts.get(&accounts.alice).unwrap().into_latest();
+    let record = contract.accounts.get_account(&accounts.alice);
     assert_ne!(0, record.balance);
 
     context.switch_account(&accounts.alice);
@@ -46,10 +49,10 @@ fn test_clean_multiple_accounts_by_oracle() {
         (accounts.bob.clone(), U128(1_000_000_000)),
     ]);
 
-    let alice_record = contract.accounts.get(&accounts.alice).unwrap().into_latest();
+    let alice_record = contract.accounts.get_account(&accounts.alice);
     assert_ne!(0, alice_record.balance);
 
-    let bob_record = contract.accounts.get(&accounts.bob).unwrap().into_latest();
+    let bob_record = contract.accounts.get_account(&accounts.bob);
     assert_ne!(0, bob_record.balance);
 
     contract.clean(vec![accounts.alice.clone(), accounts.bob.clone()]);

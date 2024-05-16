@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use claim_model::{
     account_record::{AccountRecordLegacy, AccountRecordVersioned},
     api::InitApi,
-    Duration, TokensAmount, UnixTimestamp,
+    asset::AssetVersioned,
+    AssetSymbol, Duration, TokensAmount, UnixTimestamp,
 };
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -10,6 +13,7 @@ use near_sdk::{
     AccountId, BorshStorageKey, PanicOnDefault,
 };
 
+mod asset;
 mod auth;
 mod burn;
 mod claim;
@@ -31,6 +35,8 @@ pub struct Contract {
     /// This field specifies the associated fungible token contract with which this smart
     /// contract interacts.
     token_account_id: AccountId,
+
+    extra_tokens: HashMap<AssetSymbol, AssetVersioned>,
 
     /// A set of account IDs authorized to perform sensitive operations within the contract.
     ///
@@ -108,6 +114,7 @@ impl InitApi for Contract {
 
         Self {
             token_account_id,
+            extra_tokens: HashMap::new(),
 
             accounts_legacy: LookupMap::new(StorageKey::AccountsLegacy),
             accounts: LookupMap::new(StorageKey::Accounts),

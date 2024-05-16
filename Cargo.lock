@@ -674,6 +674,7 @@ dependencies = [
  "near-workspaces",
  "nitka",
  "nitka-proc",
+ "serde",
 ]
 
 [[package]]

@@ -6,7 +6,10 @@ use claim_model::{
 };
 use near_sdk::json_types::U128;
 
-use crate::common::tests::{days_to_seconds, sweat_to_atto, Context};
+use crate::common::{
+    tests::{days_to_seconds, sweat_to_atto, Context},
+    AccountAccessor,
+};
 
 #[test]
 fn test_migration_with_burnt_balance_and_evaporating_sweat() {
@@ -52,7 +55,7 @@ fn test_migration_with_burnt_balance_and_evaporating_sweat() {
     let alice_current_balance = contract.get_claimable_balance_for_account(alice.clone());
     assert_eq!(alice_balance_2, alice_current_balance.0);
 
-    let alice_account = contract.accounts.get(alice).unwrap().into_latest();
+    let alice_account = contract.accounts.get_account(alice);
     assert_eq!(
         (current_timestamp - burn_period) as UnixTimestamp,
         alice_account.burn_since
@@ -142,7 +145,7 @@ fn test_migration_with_burnt_sweat_and_not_evaporating_sweat() {
     let alice_current_balance = contract.get_claimable_balance_for_account(alice.clone());
     assert_eq!(alice_balance_3, alice_current_balance.0);
 
-    let alice_account = contract.accounts.get(alice).unwrap().into_latest();
+    let alice_account = contract.accounts.get_account(alice);
     assert_eq!(
         alice_account_outdated.claim_period_refreshed_at,
         alice_account.burn_since
@@ -210,7 +213,7 @@ fn test_migration_with_no_burnt_sweat() {
     let alice_current_balance = contract.get_claimable_balance_for_account(alice.clone());
     assert_eq!(alice_balance_1 + alice_balance_2, alice_current_balance.0);
 
-    let alice_account = contract.accounts.get(alice).unwrap().into_latest();
+    let alice_account = contract.accounts.get_account(alice);
     assert_eq!(
         alice_account_outdated.claim_period_refreshed_at,
         alice_account.burn_since

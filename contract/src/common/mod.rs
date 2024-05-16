@@ -45,7 +45,9 @@ fn convert_milliseconds_to_unix_timestamp_with_unsuccessfully() {
 pub type AccountMap = LookupMap<AccountId, AccountRecordVersioned>;
 
 pub(crate) trait AccountAccessor {
-    fn get_account(&self, account_id: &AccountId) -> &AccountRecord;
+    fn get_account(&self, account_id: &AccountId) -> AccountRecord;
+
+    fn try_get_account(&self, account_id: &AccountId) -> Option<AccountRecord>;
 
     fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord;
 
@@ -53,14 +55,26 @@ pub(crate) trait AccountAccessor {
 }
 
 impl AccountAccessor for AccountMap {
-    fn get_account(&self, account_id: &AccountId) -> &AccountRecord {
-        let AccountRecordVersioned::V1(account) = self.get(account_id).expect("Account not found");
-        account
+    fn get_account(&self, account_id: &AccountId) -> AccountRecord {
+        self.try_get_account(account_id).expect("Account not found")
+    }
+
+    fn try_get_account(&self, account_id: &AccountId) -> Option<AccountRecord> {
+        self.get(account_id).map(|account| AccountRecord::from(account.clone()))
     }
 
     fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
-        let AccountRecordVersioned::V1(account) = self.get_mut(account_id).expect("Account not found");
-        account
+        if let Some(account) = self.get(account_id) {
+            if !account.is_latest() {
+                self.insert(account_id.clone(), account.update_to_latest());
+            }
+        }
+
+        let account = self.get_mut(account_id).expect("Account not found");
+        match account {
+            AccountRecordVersioned::V2(value) => value,
+            _ => panic_str("Expected the latest account version"),
+        }
     }
 
     fn get_or_insert_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {

@@ -1,6 +1,6 @@
 #![allow(deprecated)]
 
-use std::cmp::max;
+use std::{cmp::max, collections::HashMap};
 
 use claim_model::{
     account_record::{AccountRecordLegacy, AccountRecordVersioned},
@@ -37,6 +37,7 @@ impl MigrationApi for Contract {
 
         Self {
             token_account_id: old_state.token_account_id,
+            extra_tokens: HashMap::new(),
             oracles: old_state.oracles,
             claim_period: old_state.claim_period,
             burn_period: old_state.burn_period,

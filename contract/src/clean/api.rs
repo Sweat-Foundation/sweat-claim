@@ -1,7 +1,7 @@
 use claim_model::event::{emit, CleanData, EventKind};
 use near_sdk::{near_bindgen, AccountId};
 
-use crate::{Contract, ContractExt};
+use crate::{common::AccountAccessor, Contract, ContractExt};
 
 pub trait CleanApi {
     fn clean(&mut self, account_ids: Vec<AccountId>);
@@ -15,8 +15,8 @@ impl CleanApi for Contract {
         for account_id in account_ids.clone() {
             self.accounts_legacy.set(account_id.clone(), None);
 
-            if let Some(account) = self.accounts.get(&account_id) {
-                self.balance_to_burn += account.into_latest().balance;
+            if let Some(account) = self.accounts.try_get_account(&account_id) {
+                self.balance_to_burn += account.balance;
             }
             self.accounts.set(account_id, None);
         }

@@ -5,12 +5,14 @@ use near_sdk::{
 
 pub mod account_record;
 pub mod api;
+pub mod asset;
 pub mod event;
 
 pub type UnixTimestamp = u32;
 pub type AccrualIndex = u32;
 pub type TokensAmount = u128;
 pub type Duration = u32; // Period in seconds
+pub type AssetSymbol = String;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(crate = "near_sdk::serde", tag = "type", content = "data", rename_all = "snake_case")]

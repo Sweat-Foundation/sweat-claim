@@ -21,3 +21,4 @@ nitka = { workspace = true, optional = true }
 nitka-proc = { workspace = true }
 
 near-workspaces = { workspace = true, optional = true }
+serde = { version = "1.0.195", features = ["derive"] }
