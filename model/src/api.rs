@@ -187,7 +187,7 @@ pub trait RecordApi {
     /// # Panics
     ///
     /// Panics if called by any account other than an oracle.
-    fn record_batch_for_hold(&mut self, amounts: Vec<(AccountId, U128)>);
+    fn record_batch_for_hold(&mut self, amounts: Vec<(AccountId, U128)>, asset: Option<AssetSymbol>);
 }
 
 /// An API for managing the claiming process of accrued tokens in the smart contract.

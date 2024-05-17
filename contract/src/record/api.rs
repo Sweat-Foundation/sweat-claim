@@ -1,6 +1,7 @@
 use claim_model::{
     api::RecordApi,
     event::{emit, EventKind::Record, RecordAmountDetailed, RecordData},
+    AssetSymbol,
 };
 use near_sdk::{json_types::U128, near_bindgen, AccountId};
 
@@ -11,7 +12,7 @@ use crate::{
 
 #[near_bindgen]
 impl RecordApi for Contract {
-    fn record_batch_for_hold(&mut self, amounts: Vec<(AccountId, U128)>) {
+    fn record_batch_for_hold(&mut self, amounts: Vec<(AccountId, U128)>, asset: Option<AssetSymbol>) {
         self.assert_oracle();
 
         // Default value can be 0 only in tests.
