@@ -2,7 +2,6 @@
 
 use std::{
     collections::HashMap,
-    fmt::format,
     ops::{Deref, DerefMut},
 };
 

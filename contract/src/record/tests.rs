@@ -12,7 +12,7 @@ fn record_by_oracle() {
     let alice_balance_1 = 1_000_000;
 
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance_1))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance_1))], None);
 
     let alice_actual_balance = contract.get_claimable_balance_for_account(accounts.alice.clone());
     assert_eq!(alice_balance_1, alice_actual_balance.0);
@@ -22,10 +22,13 @@ fn record_by_oracle() {
     let alice_balance_2 = 500_000;
     let bob_balance = 200_000;
 
-    contract.record_batch_for_hold(vec![
-        (accounts.alice.clone(), U128(alice_balance_2)),
-        (accounts.bob.clone(), U128(bob_balance)),
-    ]);
+    contract.record_batch_for_hold(
+        vec![
+            (accounts.alice.clone(), U128(alice_balance_2)),
+            (accounts.bob.clone(), U128(bob_balance)),
+        ],
+        None,
+    );
 
     let alice_actual_balance = contract.get_claimable_balance_for_account(accounts.alice.clone());
     assert_eq!(alice_balance_1 + alice_balance_2, alice_actual_balance.0);
@@ -40,5 +43,5 @@ fn record_by_not_oracle() {
     let (_context, mut contract, accounts) = Context::init_with_oracle();
 
     let alice_balance_1 = 1_000_000;
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance_1))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance_1))], None);
 }

@@ -176,7 +176,7 @@ pub(crate) mod balance_tests {
         let alice_balance = 100_000_000;
         let alice_burn_rate = get_burn_rate(alice_balance, burn_period);
 
-        contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+        contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))], None);
 
         for i in 1..=5 {
             let seconds_after_burn_start: u64 = burn_period as u64 / i as u64;
@@ -188,49 +188,6 @@ pub(crate) mod balance_tests {
                 alice_current_balance
             );
         }
-    }
-}
-
-impl Contract {
-    pub(crate) fn record_batch_for_hold_legacy(&mut self, amounts: Vec<(AccountId, U128)>) {
-        self.assert_oracle();
-
-        let now_seconds = now_seconds();
-        let mut event_data = RecordData::new(now_seconds);
-
-        let balances = self
-            .accruals
-            .entry(now_seconds)
-            .or_insert_with(|| (Vector::new(_AccrualsEntryLegacy(now_seconds)), 0));
-
-        for (account_id, amount) in amounts {
-            event_data.amounts.push((
-                account_id.clone(),
-                RecordAmountDetailed {
-                    credited: amount,
-                    burnt: U128(0),
-                },
-            ));
-
-            let amount = amount.0;
-            let index = balances.0.len();
-
-            balances.1 += amount;
-            balances.0.push(amount);
-
-            if let Some(record) = self.accounts_legacy.get_mut(&account_id) {
-                record.accruals.push((now_seconds, index));
-            } else {
-                let record = AccountRecordLegacy {
-                    accruals: vec![(now_seconds, index)],
-                    ..AccountRecordLegacy::new(now_seconds)
-                };
-
-                self.accounts_legacy.insert(account_id, record);
-            }
-        }
-
-        emit(Record(event_data));
     }
 }
 

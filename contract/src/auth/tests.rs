@@ -71,39 +71,12 @@ fn remove_not_existing_oracle() {
 }
 
 #[test]
-fn unlock_account_by_oracle_legacy() {
-    let (mut context, mut contract, accounts) = Context::init_with_oracle();
-    let alice_id = accounts.alice;
-
-    context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold_legacy(vec![(alice_id.clone(), U128(1_000_000_000))]);
-    contract.accounts_legacy.get_mut(&alice_id).unwrap().is_locked = true;
-
-    contract.unlock_account(alice_id.clone());
-
-    assert!(!contract.accounts_legacy.get(&alice_id).unwrap().is_locked);
-}
-
-#[test]
-#[should_panic(expected = "Only oracle can do this")]
-fn unlock_account_not_by_oracle_legacy() {
-    let (mut context, mut contract, accounts) = Context::init_with_oracle();
-    let alice_id = accounts.alice;
-
-    context.switch_account(&alice_id);
-    contract.record_batch_for_hold_legacy(vec![(alice_id.clone(), U128(1_000_000_000))]);
-    contract.accounts_legacy.get_mut(&alice_id).unwrap().is_locked = true;
-
-    contract.unlock_account(alice_id.clone());
-}
-
-#[test]
 fn unlock_account_by_oracle() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
     let alice_id = accounts.alice;
 
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))]);
+    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))], None);
     contract.accounts.get_or_insert_account_mut(&alice_id).is_locked = true;
 
     contract.unlock_account(alice_id.clone());
@@ -128,7 +101,7 @@ fn unlock_account_not_by_oracle() {
     let alice_id = accounts.alice;
 
     context.switch_account(&alice_id);
-    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))]);
+    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))], None);
     contract.accounts.get_or_insert_account_mut(&alice_id).is_locked = true;
 
     contract.unlock_account(alice_id.clone());

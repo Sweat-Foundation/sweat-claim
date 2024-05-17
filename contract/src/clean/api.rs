@@ -13,8 +13,6 @@ impl CleanApi for Contract {
         self.assert_oracle();
 
         for account_id in account_ids.clone() {
-            self.accounts_legacy.set(account_id.clone(), None);
-
             if let Some(account) = self.accounts.try_get_account(&account_id) {
                 self.balance_to_burn += account.balance;
             }

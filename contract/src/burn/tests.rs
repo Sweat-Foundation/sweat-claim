@@ -20,10 +20,13 @@ fn test_burn_when_outdated_tokens_exist() {
     let bob_balance = 200_000;
 
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![
-        (accounts.alice.clone(), U128(alice_balance)),
-        (accounts.bob.clone(), U128(bob_balance)),
-    ]);
+    contract.record_batch_for_hold(
+        vec![
+            (accounts.alice.clone(), U128(alice_balance)),
+            (accounts.bob.clone(), U128(bob_balance)),
+        ],
+        None,
+    );
 
     context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
 
@@ -61,10 +64,13 @@ fn test_ext_error_on_burn_when_outdated_tokens_exist() {
     let bob_balance = 200_000;
 
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![
-        (accounts.alice.clone(), U128(alice_balance)),
-        (accounts.bob.clone(), U128(bob_balance)),
-    ]);
+    contract.record_batch_for_hold(
+        vec![
+            (accounts.alice.clone(), U128(alice_balance)),
+            (accounts.bob.clone(), U128(bob_balance)),
+        ],
+        None,
+    );
 
     context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
 
@@ -112,44 +118,6 @@ fn test_burn_when_outdated_tokens_don_not_exist() {
 }
 
 #[test]
-fn test_burn_status_legacy() {
-    let (mut context, mut contract, accounts) = Context::init_with_oracle();
-    let alice_id = accounts.alice;
-
-    context.switch_account(&accounts.oracle);
-
-    let mut current_timestamp = 360;
-
-    let _top_up_timestamp_1 = current_timestamp;
-    context.set_block_timestamp_in_seconds(current_timestamp);
-    contract.record_batch_for_hold_legacy(vec![(alice_id.clone(), U128(1_000_000_000))]);
-
-    current_timestamp += (contract.claim_period + 10) as u64;
-    context.set_block_timestamp_in_seconds(current_timestamp);
-
-    context.switch_account(&alice_id);
-    let claim_timestamp = current_timestamp;
-    // contract.claim();
-    // mime legacy claim
-    let account = contract.accounts_legacy.get_mut(&alice_id).unwrap();
-    account.claim_period_refreshed_at = claim_timestamp as _;
-    account.accruals.clear();
-    // ---
-
-    context.switch_account(&accounts.oracle);
-
-    current_timestamp += 3600;
-    let top_up_timestamp_2 = current_timestamp;
-    context.set_block_timestamp_in_seconds(top_up_timestamp_2);
-    contract.record_batch_for_hold_legacy(vec![(alice_id.clone(), U128(500_000_000))]);
-
-    let burn_status = contract.get_burn_status(alice_id.clone());
-    assert_eq!(Some(top_up_timestamp_2 as UnixTimestamp), burn_status.min_claimable_ts);
-    assert_eq!(claim_timestamp as UnixTimestamp, burn_status.claim_period_refreshed_at);
-    assert_eq!(contract.burn_period, burn_status.burn_period);
-}
-
-#[test]
 fn test_burn_status() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
     let alice_id = accounts.alice;
@@ -160,7 +128,7 @@ fn test_burn_status() {
 
     let _top_up_timestamp_1 = current_timestamp;
     context.set_block_timestamp_in_seconds(current_timestamp);
-    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))]);
+    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))], None);
 
     current_timestamp += (contract.claim_period + 10) as u64;
     context.set_block_timestamp_in_seconds(current_timestamp);
@@ -174,7 +142,7 @@ fn test_burn_status() {
     current_timestamp += 3600;
     let top_up_timestamp_2 = current_timestamp;
     context.set_block_timestamp_in_seconds(top_up_timestamp_2);
-    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(500_000_000))]);
+    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(500_000_000))], None);
 
     let burn_status = contract.get_burn_status(alice_id.clone());
     assert_eq!(None, burn_status.min_claimable_ts);

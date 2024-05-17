@@ -20,8 +20,6 @@ impl RecordApi for Contract {
         let mut event_data = RecordData::new(now_seconds());
 
         for (account_id, amount) in amounts {
-            self.migrate_account_if_outdated(&account_id);
-
             let account = self.accounts.get_or_insert_account_mut(&account_id);
             let balance_to_burn = account.get_balance_to_burn(self.burn_period, claimable_window_start);
 

@@ -31,7 +31,7 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_cla
 
     let alice_balance = 400_000;
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))], None);
 
     let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
     assert_eq!(alice_balance, alice_new_balance);
@@ -40,37 +40,6 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_cla
     context.set_block_timestamp_in_seconds(claim_timestamp);
     context.switch_account(&accounts.alice);
     contract.claim();
-
-    let check_timestamp = claim_timestamp + 10;
-    context.set_block_timestamp_in_seconds(check_timestamp);
-
-    let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
-    assert_eq!(
-        alice_can_claim,
-        ClaimAvailabilityView::Unavailable((claim_timestamp as UnixTimestamp, contract.claim_period))
-    );
-}
-
-#[test]
-fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_claim_is_not_passed_legacy() {
-    let (mut context, mut contract, accounts) = Context::init_with_oracle();
-
-    let alice_balance = 500_000;
-    context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold_legacy(vec![(accounts.alice.clone(), U128(alice_balance))]);
-
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
-
-    let claim_timestamp = contract.claim_period as u64 + 100;
-    context.set_block_timestamp_in_seconds(claim_timestamp);
-    context.switch_account(&accounts.alice);
-
-    // mime legacy claim
-    let account = contract.accounts_legacy.get_mut(&accounts.alice.clone()).unwrap();
-    account.claim_period_refreshed_at = claim_timestamp as _;
-    account.accruals.clear();
-    // ---
 
     let check_timestamp = claim_timestamp + 10;
     context.set_block_timestamp_in_seconds(check_timestamp);
@@ -88,7 +57,7 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_cla
 
     let alice_balance = 300_000;
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))], None);
 
     let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
     assert_eq!(alice_balance, alice_new_balance);
@@ -106,90 +75,12 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_cla
 }
 
 #[test]
-fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_claim_is_passed_legacy() {
-    let (mut context, mut contract, accounts) = Context::init_with_oracle();
-
-    let alice_balance = 300_000;
-    context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold_legacy(vec![(accounts.alice.clone(), U128(alice_balance))]);
-
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
-
-    let claim_timestamp = contract.claim_period as u64 + 100;
-    context.set_block_timestamp_in_seconds(claim_timestamp);
-    context.switch_account(&accounts.alice);
-
-    // mime legacy claim
-    let account = contract.accounts_legacy.get_mut(&accounts.alice.clone()).unwrap();
-    account.claim_period_refreshed_at = claim_timestamp as _;
-    account.accruals.clear();
-    // ---
-
-    let check_timestamp = claim_timestamp + contract.claim_period as u64 + 100;
-    context.set_block_timestamp_in_seconds(check_timestamp);
-
-    let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
-    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(0));
-}
-
-#[test]
-fn test_check_claim_availability_when_user_has_outdated_tokens_legacy() {
-    let (mut context, mut contract, accounts) = Context::init_with_oracle();
-
-    let alice_top_up_1 = 100_000;
-    context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold_legacy(vec![(accounts.alice.clone(), U128(alice_top_up_1))]);
-
-    let mut current_timestamp: UnixTimestamp = 360;
-    context.set_block_timestamp_in_seconds(current_timestamp as _);
-
-    let alice_top_up_2 = 500_000;
-    contract.record_batch_for_hold_legacy(vec![(accounts.alice.clone(), U128(alice_top_up_2))]);
-
-    current_timestamp += contract.burn_period - 10;
-    context.set_block_timestamp_in_seconds(current_timestamp as _);
-
-    context.switch_account(&accounts.alice);
-
-    let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
-    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(1));
-
-    let alice_balance = contract.get_claimable_balance_for_account(accounts.alice.clone());
-    assert_eq!(alice_top_up_2, alice_balance.0);
-}
-
-#[test]
-fn test_check_claim_availability_when_contract_accruals_are_corrupted_legacy() {
-    let (mut context, mut contract, accounts) = Context::init_with_oracle();
-
-    let alice_top_up_1 = 100_000;
-    context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold_legacy(vec![(accounts.alice.clone(), U128(alice_top_up_1))]);
-
-    let mut current_timestamp: UnixTimestamp = 360;
-    context.set_block_timestamp_in_seconds(current_timestamp as _);
-
-    let alice_top_up_2 = 500_000;
-    contract.record_batch_for_hold_legacy(vec![(accounts.alice.clone(), U128(alice_top_up_2))]);
-    contract.accruals.remove(&current_timestamp);
-
-    current_timestamp += contract.burn_period - 10;
-    context.set_block_timestamp_in_seconds(current_timestamp as _);
-
-    context.switch_account(&accounts.alice);
-
-    let alice_balance = contract.get_claimable_balance_for_account(accounts.alice.clone());
-    assert_eq!(0, alice_balance.0);
-}
-
-#[test]
 fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_record_creation_is_not_passed() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
 
     let alice_balance = 400_000;
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))], None);
 
     let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
     assert_eq!(alice_balance, alice_new_balance);
@@ -207,7 +98,7 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_rec
 
     let alice_balance = 300_000;
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))], None);
 
     context.set_block_timestamp_in_seconds(contract.claim_period as u64 + 100);
 
@@ -228,7 +119,7 @@ fn test_check_claim_availability_when_user_has_multiple_claim_records_and_claim_
     context.switch_account(&accounts.oracle);
 
     for i in 0..record_count {
-        contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+        contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))], None);
         context.set_block_timestamp_in_seconds(i as _);
     }
 
@@ -259,7 +150,7 @@ fn test_claim_when_user_has_tokens_and_claim_period_is_not_passed() {
 
     let alice_balance = 200_000;
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))], None);
 
     context.switch_account(&accounts.alice);
     contract.claim();
@@ -271,7 +162,7 @@ fn test_claim_when_user_has_tokens_and_current_time_matches_claim_period() {
 
     let alice_balance = 500_000;
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))], None);
 
     context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64);
 
@@ -289,7 +180,7 @@ fn test_claim_when_user_has_tokens_and_claim_period_is_passed() {
 
     let alice_balance = 700_000;
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))], None);
 
     context.set_block_timestamp_in_seconds(contract.claim_period as u64 + 100);
 
@@ -311,7 +202,7 @@ fn test_claim_when_user_has_tokens_and_burn_period_is_passed() {
 
     let alice_balance = 12_000_000;
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))], None);
 
     context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
 
@@ -333,7 +224,7 @@ fn test_claim_when_user_has_tokens_and_claim_period_is_passed_and_transfer_faile
 
     let alice_balance = 123_100_000;
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))], None);
 
     context.set_block_timestamp_in_seconds(contract.claim_period as u64 + 100);
 
@@ -354,7 +245,7 @@ fn test_claim_when_user_has_fully_evaporated_balance() {
 
     let alice_top_up = 500_000_000;
     context.switch_account(&accounts.oracle);
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_top_up))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_top_up))], None);
 
     context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
 
@@ -380,7 +271,7 @@ fn test_claim_when_user_has_zero_balance() {
     contract.set_claim_period(0);
 
     let alice_top_up_1 = 100;
-    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_top_up_1))]);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_top_up_1))], None);
 
     context.switch_account(&accounts.alice);
     let claimed_amount = match contract.claim() {
@@ -533,7 +424,7 @@ mod demo {
             match action {
                 Action::Record(amount) => {
                     context.switch_account(&oracle);
-                    contract.record_batch_for_hold(vec![(alice.clone(), U128(amount))]);
+                    contract.record_batch_for_hold(vec![(alice.clone(), U128(amount))], None);
                     context.switch_account(&alice);
                 }
                 Action::Claim => {
