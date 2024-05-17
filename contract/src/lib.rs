@@ -25,6 +25,9 @@ mod record;
 const INITIAL_CLAIM_PERIOD_MS: u32 = 24 * 60 * 60;
 const INITIAL_BURN_PERIOD_MS: u32 = 30 * 24 * 60 * 60;
 
+const DEFAULT_TOKEN_SYMBOL: &str = "SWEAT";
+const NEAR_SYMBOL: &str = "NEAR";
+
 /// The main structure representing a smart contract for managing fungible tokens.
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]

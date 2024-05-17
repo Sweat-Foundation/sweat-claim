@@ -3,30 +3,39 @@ use claim_model::{
     event::{emit, EventKind::Record, RecordAmountDetailed, RecordData},
     AssetSymbol,
 };
-use near_sdk::{json_types::U128, near_bindgen, require, AccountId};
+use near_sdk::{env, json_types::U128, near_bindgen, require, AccountId};
 
 use crate::{
     common::{now_seconds, AccountAccessor},
-    Contract, ContractExt,
+    Contract, ContractExt, NEAR_SYMBOL,
 };
 
 #[near_bindgen]
 impl RecordApi for Contract {
+    #[payable]
     fn record_batch_for_hold(&mut self, amounts: Vec<(AccountId, U128)>, asset: Option<AssetSymbol>) {
         self.assert_oracle();
 
         if let Some(asset) = asset {
-            require!(self.extra_tokens.contains_key(&asset), "Asset is not supported");
+            if asset == NEAR_SYMBOL {
+                let total_amount: u128 = amounts.iter().map(|value| value.1 .0).sum();
+                require!(
+                    total_amount == env::attached_deposit(),
+                    "Amounts do not match attached deposit"
+                );
+            } else {
+                require!(self.extra_tokens.contains_key(&asset), "Asset is not supported");
+            }
 
-            self.record_extra_tokens(asset, amounts);
+            self.record_extra_token_balances(asset, amounts);
         } else {
-            self.record_main_tokens(amounts);
+            self.record_main_token_balances(amounts);
         }
     }
 }
 
 impl Contract {
-    fn record_main_tokens(&mut self, amounts: Vec<(AccountId, U128)>) {
+    fn record_main_token_balances(&mut self, amounts: Vec<(AccountId, U128)>) {
         // Default value can be 0 only in tests.
         let claimable_window_start = self.get_claimable_window_start();
         let mut event_data = RecordData::new(now_seconds());
@@ -56,11 +65,11 @@ impl Contract {
         emit(Record(event_data));
     }
 
-    fn record_extra_tokens(&mut self, asset: AssetSymbol, amounts: Vec<(AccountId, U128)>) {
+    fn record_extra_token_balances(&mut self, asset: AssetSymbol, amounts: Vec<(AccountId, U128)>) {
         for (account_id, amount) in amounts {
             let account = self.accounts.get_or_insert_account_mut(&account_id);
 
-            let mut entry = account.extra_balances.entry(asset.clone()).or_default();
+            let entry = account.extra_balances.entry(asset.clone()).or_default();
             *entry += amount.0;
         }
     }
