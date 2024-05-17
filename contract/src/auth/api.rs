@@ -26,12 +26,6 @@ impl AuthApi for Contract {
     fn unlock_account(&mut self, account_id: AccountId) {
         self.assert_oracle();
 
-        if let Some(account) = self.accounts_legacy.get_mut(&account_id) {
-            account.is_locked = false;
-
-            return;
-        }
-
         let account = self.accounts.get_account_mut(&account_id);
         account.is_locked = false;
     }

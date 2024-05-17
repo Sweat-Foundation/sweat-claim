@@ -191,49 +191,6 @@ pub(crate) mod balance_tests {
     }
 }
 
-impl Contract {
-    pub(crate) fn record_batch_for_hold_legacy(&mut self, amounts: Vec<(AccountId, U128)>) {
-        self.assert_oracle();
-
-        let now_seconds = now_seconds();
-        let mut event_data = RecordData::new(now_seconds);
-
-        let balances = self
-            .accruals
-            .entry(now_seconds)
-            .or_insert_with(|| (Vector::new(_AccrualsEntryLegacy(now_seconds)), 0));
-
-        for (account_id, amount) in amounts {
-            event_data.amounts.push((
-                account_id.clone(),
-                RecordAmountDetailed {
-                    credited: amount,
-                    burnt: U128(0),
-                },
-            ));
-
-            let amount = amount.0;
-            let index = balances.0.len();
-
-            balances.1 += amount;
-            balances.0.push(amount);
-
-            if let Some(record) = self.accounts_legacy.get_mut(&account_id) {
-                record.accruals.push((now_seconds, index));
-            } else {
-                let record = AccountRecordLegacy {
-                    accruals: vec![(now_seconds, index)],
-                    ..AccountRecordLegacy::new(now_seconds)
-                };
-
-                self.accounts_legacy.insert(account_id, record);
-            }
-        }
-
-        emit(Record(event_data));
-    }
-}
-
 #[cfg(test)]
 mod account_record_tests {
     use claim_model::account_record::AccountRecord;
