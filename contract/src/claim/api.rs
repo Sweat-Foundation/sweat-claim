@@ -13,28 +13,6 @@ use crate::{
 #[near_bindgen]
 impl ClaimApi for Contract {
     fn get_claimable_balance_for_account(&self, account_id: AccountId) -> U128 {
-        let now = now_seconds();
-
-        if let Some(account) = self.accounts_legacy.get(&account_id) {
-            let mut total_accrual = 0;
-
-            for (datetime, index) in &account.accruals {
-                if !datetime.is_within_period(now, self.burn_period) {
-                    continue;
-                }
-
-                let Some((accruals, _)) = self.accruals.get(datetime) else {
-                    continue;
-                };
-
-                if let Some(amount) = accruals.get(*index) {
-                    total_accrual += *amount;
-                }
-            }
-
-            return U128(total_accrual);
-        }
-
         if let Some(account) = self.accounts.get(&account_id) {
             let account = account.into_latest();
 
@@ -59,30 +37,11 @@ impl ClaimApi for Contract {
             };
         }
 
-        if let Some(account) = self.accounts_legacy.get(&account_id) {
-            let claim_period_refreshed_at = account.claim_period_refreshed_at;
-            return if claim_period_refreshed_at.is_within_period(now_seconds(), self.claim_period) {
-                ClaimAvailabilityView::Unavailable((claim_period_refreshed_at, self.claim_period))
-            } else {
-                let claimable_entries_count: u16 = account
-                    .accruals
-                    .iter()
-                    .filter(|(datetime, _)| datetime.is_within_period(now_seconds(), self.burn_period))
-                    .count()
-                    .try_into()
-                    .expect("To many claimable entries. Expected amount to fit into u16.");
-
-                ClaimAvailabilityView::Available(claimable_entries_count)
-            };
-        }
-
         ClaimAvailabilityView::Unregistered
     }
 
     fn claim(&mut self) -> PromiseOrValue<ClaimResultView> {
         let account_id = env::predecessor_account_id();
-
-        self.migrate_account_if_outdated(&account_id);
 
         require!(
             matches!(
