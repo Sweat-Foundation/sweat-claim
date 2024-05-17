@@ -1,13 +1,23 @@
 #![allow(deprecated)]
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fmt::format,
+    ops::{Deref, DerefMut},
+};
 
 use near_sdk::{
     borsh,
-    borsh::{BorshDeserialize, BorshSerialize},
+    borsh::{
+        maybestd::io::{Error, ErrorKind::InvalidInput},
+        BorshDeserialize, BorshSerialize,
+    },
 };
 
 use crate::{get_burn_rate, AccrualIndex, AssetSymbol, Duration, TokensAmount, UnixTimestamp};
+
+pub type AccountRecord = AccountRecordVersioned;
+pub type AccountRecordLatest = AccountRecordV2;
 
 /// Represents the state of a registered account in the smart contract.
 ///
@@ -70,10 +80,54 @@ impl AccountRecordLegacy {
     }
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Clone)]
+#[derive(BorshSerialize, Clone)]
 pub enum AccountRecordVersioned {
     V1(AccountRecordV1),
     V2(AccountRecordV2),
+}
+
+/// Custom `BorshDeserialize` implementation is needed to automatically
+/// convert old versions to latest version
+impl BorshDeserialize for AccountRecordVersioned {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self, Error> {
+        let variant_idx: u8 = BorshDeserialize::deserialize(buf)?;
+        let return_value = match variant_idx {
+            0u8 => {
+                let v1: AccountRecordV1 = BorshDeserialize::deserialize(buf)?;
+                AccountRecordVersioned::V2(v1.into())
+            }
+            1u8 => AccountRecordVersioned::V2(BorshDeserialize::deserialize(buf)?),
+            _ => {
+                let msg = {
+                    let res = format(format_args!("Unexpected variant index: {variant_idx}",));
+                    res
+                };
+                return Err(Error::new(InvalidInput, msg));
+            }
+        };
+        Ok(return_value)
+    }
+}
+
+impl Deref for AccountRecordVersioned {
+    type Target = AccountRecordLatest;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::V1(_) => unreachable!("Outdated AccountRecord"),
+            // Guaranteed by `BorshDeserialize` implementation
+            Self::V2(record) => record,
+        }
+    }
+}
+
+impl DerefMut for AccountRecordVersioned {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::V1(_) => unreachable!("Outdated AccountRecord"),
+            // Guaranteed by `BorshDeserialize` implementation
+            Self::V2(record) => record,
+        }
+    }
 }
 
 /// Represents the state of a registered account in the smart contract.
@@ -163,7 +217,7 @@ pub struct AccountRecordV2 {
     pub is_locked: bool,
 }
 
-impl From<AccountRecordV1> for AccountRecord {
+impl From<AccountRecordV1> for AccountRecordV2 {
     fn from(value: AccountRecordV1) -> Self {
         Self {
             balance: value.balance,
@@ -176,60 +230,27 @@ impl From<AccountRecordV1> for AccountRecord {
     }
 }
 
-impl From<AccountRecordVersioned> for AccountRecord {
-    fn from(value: AccountRecordVersioned) -> Self {
-        match value {
-            AccountRecordVersioned::V1(value) => value.into(),
-            AccountRecordVersioned::V2(value) => value,
-        }
-    }
-}
-
-impl From<AccountRecord> for AccountRecordVersioned {
-    fn from(value: AccountRecord) -> Self {
-        Self::V2(value)
-    }
-}
-
-impl AccountRecordVersioned {
-    pub fn new(now: UnixTimestamp) -> Self {
-        Self::from(AccountRecord::new(now))
-    }
-
-    pub fn from_legacy(account: &AccountRecordLegacy, balance: TokensAmount, burn_since: UnixTimestamp) -> Self {
-        Self::V1(AccountRecordV1 {
-            balance,
-            burn_since,
-            claim_period_refreshed_at: account.claim_period_refreshed_at,
-            is_enabled: account.is_enabled,
-            is_locked: account.is_locked,
-        })
-    }
-
-    pub fn update_to_latest(&self) -> AccountRecordVersioned {
-        match self {
-            AccountRecordVersioned::V1(value) => Self::from(AccountRecord::from(*value)),
-            AccountRecordVersioned::V2(_) => self.clone(),
-        }
-    }
-
-    pub fn is_latest(&self) -> bool {
-        matches!(self, AccountRecordVersioned::V2(_))
-    }
-}
-
-pub type AccountRecord = AccountRecordV2;
-
 impl AccountRecord {
     pub fn new(now: UnixTimestamp) -> Self {
-        Self {
+        Self::V2(AccountRecordLatest {
             balance: 0,
             extra_balances: HashMap::new(),
             claim_period_refreshed_at: now,
             burn_since: now,
             is_enabled: true,
             is_locked: false,
-        }
+        })
+    }
+
+    pub fn from_legacy(account: &AccountRecordLegacy, balance: TokensAmount, burn_since: UnixTimestamp) -> Self {
+        Self::V2(AccountRecordV2 {
+            balance,
+            extra_balances: HashMap::new(),
+            burn_since,
+            claim_period_refreshed_at: account.claim_period_refreshed_at,
+            is_enabled: account.is_enabled,
+            is_locked: account.is_locked,
+        })
     }
 }
 

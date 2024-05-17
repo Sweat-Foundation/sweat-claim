@@ -64,17 +64,7 @@ impl AccountAccessor for AccountMap {
     }
 
     fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
-        if let Some(account) = self.get(account_id) {
-            if !account.is_latest() {
-                self.insert(account_id.clone(), account.update_to_latest());
-            }
-        }
-
-        let account = self.get_mut(account_id).expect("Account not found");
-        match account {
-            AccountRecordVersioned::V2(value) => value,
-            _ => panic_str("Expected the latest account version"),
-        }
+        self.get_mut(account_id).expect("Account not found")
     }
 
     fn get_or_insert_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
