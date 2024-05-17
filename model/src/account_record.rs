@@ -98,11 +98,10 @@ impl BorshDeserialize for AccountRecordVersioned {
             }
             1u8 => AccountRecordVersioned::V2(BorshDeserialize::deserialize(buf)?),
             _ => {
-                let msg = {
-                    let res = format(format_args!("Unexpected variant index: {variant_idx}",));
-                    res
-                };
-                return Err(Error::new(InvalidInput, msg));
+                return Err(Error::new(
+                    InvalidInput,
+                    format!("Unexpected variant index: {variant_idx}"),
+                ));
             }
         };
         Ok(return_value)
