@@ -37,6 +37,9 @@ fmt: ##@Chores Format the code using rustfmt nightly.
 lint: ##@Chores Run lint checks with Clippy.
 	./scripts/lint.sh
 
+hash: ##@Chores Check if contract in commit has valid hash.
+	./scripts/check-contract-hash.sh
+
 HELP_FUN = \
     %help; while(<>){push@{$$help{$$2//'options'}},[$$1,$$3] \
     if/^([\w-_]+)\s*:.*\#\#(?:@(\w+))?\s(.*)$$/}; \
