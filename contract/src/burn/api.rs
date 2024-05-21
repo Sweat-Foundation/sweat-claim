@@ -51,7 +51,7 @@ impl BurnApi for Contract {
             .map(|(timestamp, _)| timestamp)
             .filter(|timestamp| timestamp.is_within_period(now, self.burn_period))
             .min()
-            .cloned();
+            .copied();
 
         BurnStatus {
             min_claimable_ts,
