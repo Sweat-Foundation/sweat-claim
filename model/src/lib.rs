@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use near_sdk::{
     json_types::U128,
     serde::{Deserialize, Serialize},
@@ -30,6 +32,22 @@ pub enum ClaimAvailabilityView {
 #[serde(crate = "near_sdk::serde")]
 pub struct ClaimResultView {
     pub total: U128,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct ClaimAllResultView {
+    pub claimed: HashMap<AssetSymbol, U128>,
+    pub failed: Vec<AssetSymbol>,
+}
+
+impl ClaimAllResultView {
+    pub fn new() -> Self {
+        Self {
+            claimed: HashMap::new(),
+            failed: vec![],
+        }
+    }
 }
 
 impl ClaimResultView {

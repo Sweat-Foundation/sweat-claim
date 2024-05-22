@@ -16,8 +16,8 @@ pub enum AssetVersioned {
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Clone)]
 pub struct AssetV1 {
-    account_id: AccountId,
-    is_enabled: bool,
+    pub account_id: AccountId,
+    pub is_enabled: bool,
 }
 
 impl From<AssetVersioned> for Asset {

@@ -17,6 +17,7 @@ mod asset;
 mod auth;
 mod burn;
 mod claim;
+mod claim_all;
 mod clean;
 mod common;
 mod config;

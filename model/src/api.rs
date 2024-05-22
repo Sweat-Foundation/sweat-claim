@@ -5,7 +5,10 @@ use near_sdk::{json_types::U128, PromiseOrValue};
 use nitka::AccountId;
 use nitka_proc::make_integration_version;
 
-use crate::{asset::Asset, AssetSymbol, BurnStatus, ClaimAvailabilityView, ClaimResultView, Duration, UnixTimestamp};
+use crate::{
+    asset::Asset, AssetSymbol, BurnStatus, ClaimAllResultView, ClaimAvailabilityView, ClaimResultView, Duration,
+    UnixTimestamp,
+};
 
 #[cfg(feature = "integration-test")]
 pub struct ClaimContract<'a> {
@@ -240,6 +243,11 @@ pub trait ClaimApi {
     /// Panics if the claim is unavailable at the moment of calling. Users should ensure that
     /// their claim is available using the `is_claim_available` method prior to calling this.
     fn claim(&mut self) -> PromiseOrValue<ClaimResultView>;
+}
+
+#[make_integration_version]
+pub trait ClaimAllApi {
+    fn claim_all(&mut self, assets: Option<Vec<AssetSymbol>>) -> PromiseOrValue<ClaimAllResultView>;
 }
 
 #[make_integration_version]
