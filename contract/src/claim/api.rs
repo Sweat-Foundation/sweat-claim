@@ -58,7 +58,7 @@ impl ClaimApi for Contract {
         let amount_to_burn = account.get_balance_to_burn(self.burn_period, self.get_claimable_window_start());
         let amount_to_claim = account.balance - amount_to_burn;
 
-        let account = self.accounts.get_or_insert_account_mut(&account_id);
+        let account = self.accounts.get_account_mut(&account_id);
         account.balance = 0;
 
         if amount_to_claim == 0 {

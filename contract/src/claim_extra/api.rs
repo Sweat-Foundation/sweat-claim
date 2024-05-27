@@ -1,5 +1,5 @@
 use claim_model::{
-    account_record::AccountRecord, api::ClaimAllApi, asset::AssetVersioned, AssetSymbol, ClaimAllResultView,
+    account_record::AccountRecord, api::ClaimExtraApi, asset::AssetVersioned, AssetSymbol, ClaimAllResultView,
     TokensAmount,
 };
 use near_sdk::{
@@ -10,8 +10,8 @@ use near_sdk::{
 use crate::{common::AccountAccessor, Contract, ContractExt, DEFAULT_TOKEN_SYMBOL, NEAR_SYMBOL};
 
 #[near_bindgen]
-impl ClaimAllApi for Contract {
-    fn claim_all(&mut self, assets: Option<Vec<AssetSymbol>>) -> PromiseOrValue<ClaimAllResultView> {
+impl ClaimExtraApi for Contract {
+    fn claim_extra(&mut self, assets: Option<Vec<AssetSymbol>>) -> PromiseOrValue<ClaimAllResultView> {
         let account_id = env::predecessor_account_id();
         let account = self.accounts.get_account(&account_id);
 

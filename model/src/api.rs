@@ -246,8 +246,8 @@ pub trait ClaimApi {
 }
 
 #[make_integration_version]
-pub trait ClaimAllApi {
-    fn claim_all(&mut self, assets: Option<Vec<AssetSymbol>>) -> PromiseOrValue<ClaimAllResultView>;
+pub trait ClaimExtraApi {
+    fn claim_extra(&mut self, assets: Option<Vec<AssetSymbol>>) -> PromiseOrValue<ClaimAllResultView>;
 }
 
 #[make_integration_version]
