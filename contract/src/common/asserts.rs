@@ -1,16 +1,20 @@
 use near_sdk::{
     env::{current_account_id, predecessor_account_id},
-    require, Gas,
+    require, AccountId, Gas,
 };
 
 use crate::{common::remaining_gas, Contract};
 
 impl Contract {
-    pub(crate) fn assert_oracle(&self) {
+    pub(crate) fn assert_oracle(&self, account_id: &AccountId) {
         require!(
-            self.oracles.contains(&predecessor_account_id()),
+            self.oracles.contains(account_id),
             "Unauthorized access! Only oracle can do this!"
         );
+    }
+
+    pub(crate) fn assert_called_by_oracle(&self) {
+        self.assert_oracle(&predecessor_account_id());
     }
 
     pub(crate) fn assert_private() {

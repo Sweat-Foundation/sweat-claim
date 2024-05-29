@@ -15,6 +15,7 @@ integration-api = ["claim-model/integration-api"]
 
 [dependencies]
 near-sdk = { workspace = true }
+near-contract-standards = { workspace = true }
 claim-model = { workspace = true }
 
 [dev-dependencies]

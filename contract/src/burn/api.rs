@@ -10,7 +10,7 @@ use crate::{common::AccountAccessor, Contract, ContractExt};
 #[near_bindgen]
 impl BurnApi for Contract {
     fn burn(&mut self) -> PromiseOrValue<U128> {
-        self.assert_oracle();
+        self.assert_called_by_oracle();
 
         require!(!self.is_service_call_running, "Another service call is running");
 

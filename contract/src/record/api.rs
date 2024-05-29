@@ -14,7 +14,7 @@ use crate::{
 impl RecordApi for Contract {
     #[payable]
     fn record_batch_for_hold(&mut self, amounts: Vec<(AccountId, U128)>, asset: Option<AssetSymbol>) {
-        self.assert_oracle();
+        self.assert_called_by_oracle();
 
         if let Some(asset) = asset {
             if asset == NEAR_SYMBOL {

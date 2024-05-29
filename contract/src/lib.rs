@@ -21,6 +21,7 @@ mod claim_extra;
 mod clean;
 mod common;
 mod config;
+mod receiver;
 mod record;
 
 const INITIAL_CLAIM_PERIOD_MS: u32 = 24 * 60 * 60;

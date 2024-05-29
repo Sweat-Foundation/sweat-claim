@@ -10,7 +10,7 @@ pub trait CleanApi {
 #[near_bindgen]
 impl CleanApi for Contract {
     fn clean(&mut self, account_ids: Vec<AccountId>) {
-        self.assert_oracle();
+        self.assert_called_by_oracle();
 
         for account_id in account_ids.clone() {
             if let Some(account) = self.accounts.try_get_account(&account_id) {

@@ -36,12 +36,12 @@ pub struct ClaimResultView {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(crate = "near_sdk::serde")]
-pub struct ClaimAllResultView {
+pub struct ClaimExtraResultView {
     pub claimed: HashMap<AssetSymbol, U128>,
     pub failed: Vec<AssetSymbol>,
 }
 
-impl ClaimAllResultView {
+impl ClaimExtraResultView {
     pub fn new() -> Self {
         Self {
             claimed: HashMap::new(),

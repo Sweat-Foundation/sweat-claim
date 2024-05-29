@@ -4218,6 +4218,7 @@ name = "sweat_claim"
 version = "2.0.1"
 dependencies = [
  "claim-model",
+ "near-contract-standards",
  "near-sdk 4.1.1",
  "plotters",
  "rand 0.8.5",

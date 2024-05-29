@@ -6,7 +6,7 @@ use nitka::AccountId;
 use nitka_proc::make_integration_version;
 
 use crate::{
-    asset::Asset, AssetSymbol, BurnStatus, ClaimAllResultView, ClaimAvailabilityView, ClaimResultView, Duration,
+    asset::Asset, AssetSymbol, BurnStatus, ClaimAvailabilityView, ClaimExtraResultView, ClaimResultView, Duration,
     UnixTimestamp,
 };
 
@@ -247,7 +247,7 @@ pub trait ClaimApi {
 
 #[make_integration_version]
 pub trait ClaimExtraApi {
-    fn claim_extra(&mut self, assets: Option<Vec<AssetSymbol>>) -> PromiseOrValue<ClaimAllResultView>;
+    fn claim_extra(&mut self, assets: Option<Vec<AssetSymbol>>) -> PromiseOrValue<ClaimExtraResultView>;
 }
 
 #[make_integration_version]

@@ -1,17 +1,17 @@
 use claim_model::{
-    account_record::AccountRecord, api::ClaimExtraApi, asset::AssetVersioned, AssetSymbol, ClaimAllResultView,
+    account_record::AccountRecord, api::ClaimExtraApi, asset::AssetVersioned, AssetSymbol, ClaimExtraResultView,
     TokensAmount,
 };
 use near_sdk::{
-    env, env::panic_str, ext_contract, is_promise_success, json_types::U128, near_bindgen, require, serde_json::json,
-    AccountId, Gas, Promise, PromiseOrValue,
+    env, ext_contract, is_promise_success, json_types::U128, near_bindgen, require, serde_json::json, AccountId, Gas,
+    Promise, PromiseOrValue,
 };
 
 use crate::{common::AccountAccessor, Contract, ContractExt, DEFAULT_TOKEN_SYMBOL, NEAR_SYMBOL};
 
 #[near_bindgen]
 impl ClaimExtraApi for Contract {
-    fn claim_extra(&mut self, assets: Option<Vec<AssetSymbol>>) -> PromiseOrValue<ClaimAllResultView> {
+    fn claim_extra(&mut self, assets: Option<Vec<AssetSymbol>>) -> PromiseOrValue<ClaimExtraResultView> {
         let account_id = env::predecessor_account_id();
         let account = self.accounts.get_account(&account_id);
 
@@ -22,12 +22,12 @@ impl ClaimExtraApi for Contract {
         let claimable_assets: Vec<AssetSymbol> = assets.into_iter().filter(|asset| self.is_claimable(asset)).collect();
 
         if claimable_assets.is_empty() {
-            PromiseOrValue::Value(ClaimAllResultView::new())
+            PromiseOrValue::Value(ClaimExtraResultView::new())
         } else {
             let account = self.accounts.get_account_mut(&account_id);
             account.is_locked = true;
 
-            let mut result = ClaimAllResultView::new();
+            let mut result = ClaimExtraResultView::new();
 
             let claimable_assets: Vec<(AssetSymbol, TokensAmount)> = claimable_assets
                 .into_iter()
@@ -65,12 +65,12 @@ impl Contract {
 
     fn transfer(
         &mut self,
-        result: &mut ClaimAllResultView,
+        result: &mut ClaimExtraResultView,
         receiver_id: AccountId,
         asset_symbol: AssetSymbol,
         amount: TokensAmount,
         tail: Vec<(AssetSymbol, TokensAmount)>,
-    ) -> PromiseOrValue<ClaimAllResultView> {
+    ) -> PromiseOrValue<ClaimExtraResultView> {
         if asset_symbol == AssetSymbol::from(NEAR_SYMBOL) {
             self.transfer_near(result, receiver_id, amount, tail)
         } else {
@@ -80,15 +80,15 @@ impl Contract {
 
     fn transfer_ft(
         &mut self,
-        result: &mut ClaimAllResultView,
+        result: &mut ClaimExtraResultView,
         receiver_id: AccountId,
         asset_symbol: AssetSymbol,
         amount: TokensAmount,
         tail: Vec<(AssetSymbol, TokensAmount)>,
-    ) -> PromiseOrValue<ClaimAllResultView> {
+    ) -> PromiseOrValue<ClaimExtraResultView> {
         let callback = claim_all_callback::ext(env::current_account_id())
             .with_static_gas(GAS_FOR_TRANSFER_CALLBACK)
-            .on_transfer(result, receiver_id.clone(), asset_symbol, amount, tail);
+            .on_transfer_extra(result, receiver_id.clone(), asset_symbol, amount, tail);
 
         let args = json!({
             "receiver_id": receiver_id.clone(),
@@ -107,14 +107,14 @@ impl Contract {
 
     fn transfer_near(
         &mut self,
-        result: &mut ClaimAllResultView,
+        result: &mut ClaimExtraResultView,
         receiver_id: AccountId,
         amount: TokensAmount,
         tail: Vec<(AssetSymbol, TokensAmount)>,
-    ) -> PromiseOrValue<ClaimAllResultView> {
+    ) -> PromiseOrValue<ClaimExtraResultView> {
         let callback = claim_all_callback::ext(env::current_account_id())
             .with_static_gas(GAS_FOR_TRANSFER_CALLBACK)
-            .on_transfer(
+            .on_transfer_extra(
                 result,
                 receiver_id.clone(),
                 AssetSymbol::from(NEAR_SYMBOL),
@@ -127,28 +127,28 @@ impl Contract {
 }
 
 #[ext_contract(claim_all_callback)]
-trait ClaimAllCallbacks {
-    fn on_transfer(
+trait ClaimExtraCallbacks {
+    fn on_transfer_extra(
         &mut self,
-        result: &mut ClaimAllResultView,
+        result: &mut ClaimExtraResultView,
         receiver_id: AccountId,
         asset_symbol: AssetSymbol,
         amount: TokensAmount,
         tail: Vec<(AssetSymbol, TokensAmount)>,
-    ) -> PromiseOrValue<ClaimAllResultView>;
+    ) -> PromiseOrValue<ClaimExtraResultView>;
 }
 
 #[near_bindgen]
-impl ClaimAllCallbacks for Contract {
+impl ClaimExtraCallbacks for Contract {
     #[private]
-    fn on_transfer(
+    fn on_transfer_extra(
         &mut self,
-        result: &mut ClaimAllResultView,
+        result: &mut ClaimExtraResultView,
         receiver_id: AccountId,
         asset_symbol: AssetSymbol,
         amount: TokensAmount,
         tail: Vec<(AssetSymbol, TokensAmount)>,
-    ) -> PromiseOrValue<ClaimAllResultView> {
+    ) -> PromiseOrValue<ClaimExtraResultView> {
         if is_promise_success() {
             result.claimed.insert(asset_symbol, U128(amount));
         } else {
