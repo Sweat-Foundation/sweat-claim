@@ -151,7 +151,7 @@ pub trait BurnApi {
     /// authority to initiate the burn process.
     ///
     /// Panics if another service call is running.
-    fn burn(&mut self) -> PromiseOrValue<U128>;
+    fn burn(&mut self, amount: Option<U128>) -> PromiseOrValue<U128>;
 
     /// Retrieves the burn status for a given account.
     ///
@@ -167,6 +167,8 @@ pub trait BurnApi {
     ///
     /// A `BurnStatus` struct containing information about the burn status of the account.
     fn get_burn_status(&self, account_id: AccountId) -> BurnStatus;
+
+    fn get_balance_to_burn(&self) -> U128;
 }
 
 /// An API for recording (updating) user balances in the smart contract.

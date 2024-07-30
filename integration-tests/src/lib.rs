@@ -78,7 +78,7 @@ async fn happy_flow() -> Result<()> {
 }
 
 #[tokio::test]
-async fn burn() -> Result<()> {
+async fn burn_total() -> Result<()> {
     let claim_period = 60;
     let burn_period = 2 * 60;
     let mut context = prepare_contract(Some(claim_period), Some(burn_period)).await?;
@@ -107,14 +107,14 @@ async fn burn() -> Result<()> {
 
     assert_eq!(claim_contract_balance.0, target_payout.amount_for_user);
 
-    let burn_result = context.sweat_claim().burn().with_user(&manager).await?;
+    let burn_result = context.sweat_claim().burn(None).with_user(&manager).await?;
     assert_eq!(0, burn_result.0);
 
     context.fast_forward_minutes((2 * burn_period) as u64).await?;
 
     context.sweat_claim().claim().with_user(&alice).await?;
 
-    let burn_result = context.sweat_claim().burn().with_user(&manager).await?;
+    let burn_result = context.sweat_claim().burn(None).with_user(&manager).await?;
     assert_eq!(target_payout.amount_for_user, burn_result.0);
 
     let alice_deferred_balance = context
@@ -122,6 +122,66 @@ async fn burn() -> Result<()> {
         .get_claimable_balance_for_account(alice.to_near())
         .await?;
     assert_eq!(0, alice_deferred_balance.0);
+
+    let balance_to_burn = context.sweat_claim().get_balance_to_burn().await?;
+    assert_eq!(0, balance_to_burn.0);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn burn_part() -> Result<()> {
+    let claim_period = 0;
+    let burn_period = 1;
+    let mut context = prepare_contract(Some(claim_period), Some(burn_period)).await?;
+
+    let manager = context.manager().await?;
+    let alice = context.alice().await?;
+
+    let alice_steps = 100_000;
+
+    let target_token_amount = context.ft_contract().formula(U64(0), alice_steps).await?.0;
+    let target_payout = Payout::from(target_token_amount);
+
+    context
+        .ft_contract()
+        .defer_batch(
+            vec![(alice.to_near(), alice_steps)],
+            context.sweat_claim().contract.as_account().to_near(),
+        )
+        .with_user(&manager)
+        .await?;
+
+    let claim_contract_balance = context
+        .ft_contract()
+        .ft_balance_of(context.sweat_claim().contract.as_account().to_near())
+        .await?;
+
+    assert_eq!(claim_contract_balance.0, target_payout.amount_for_user);
+
+    let burn_result = context.sweat_claim().burn(None).with_user(&manager).await?;
+    assert_eq!(0, burn_result.0);
+
+    context.fast_forward_minutes((2 * burn_period) as u64).await?;
+
+    context.sweat_claim().claim().with_user(&alice).await?;
+
+    let target_amount_to_burn = 100;
+    let burn_result = context
+        .sweat_claim()
+        .burn(Some(U128(target_amount_to_burn)))
+        .with_user(&manager)
+        .await?;
+    assert_eq!(target_amount_to_burn, burn_result.0);
+
+    let alice_deferred_balance = context
+        .sweat_claim()
+        .get_claimable_balance_for_account(alice.to_near())
+        .await?;
+    assert_eq!(0, alice_deferred_balance.0);
+
+    let balance_to_burn = context.sweat_claim().get_balance_to_burn().await?;
+    assert_eq!(target_payout.amount_for_user - target_amount_to_burn, balance_to_burn.0);
 
     Ok(())
 }

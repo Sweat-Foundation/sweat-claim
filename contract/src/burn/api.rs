@@ -1,3 +1,5 @@
+use std::cmp;
+
 use claim_model::{
     api::BurnApi,
     event::{emit, BurnData, EventKind},
@@ -9,16 +11,20 @@ use crate::{common::AccountAccessor, Contract, ContractExt};
 
 #[near_bindgen]
 impl BurnApi for Contract {
-    fn burn(&mut self) -> PromiseOrValue<U128> {
+    fn burn(&mut self, amount: Option<U128>) -> PromiseOrValue<U128> {
         self.assert_oracle();
 
         require!(!self.is_service_call_running, "Another service call is running");
 
-        let amount_to_burn = self.balance_to_burn;
+        let amount_to_burn = if let Some(amount) = amount {
+            cmp::min(self.balance_to_burn, amount.0)
+        } else {
+            self.balance_to_burn
+        };
 
         if amount_to_burn > 0 {
             self.is_service_call_running = true;
-            self.balance_to_burn = 0;
+            self.balance_to_burn -= amount_to_burn;
 
             self.burn_external(amount_to_burn)
         } else {
@@ -34,6 +40,10 @@ impl BurnApi for Contract {
             claim_period_refreshed_at: account.claim_period_refreshed_at,
             burn_period: self.burn_period,
         }
+    }
+
+    fn get_balance_to_burn(&self) -> U128 {
+        U128::from(self.balance_to_burn)
     }
 }
 
