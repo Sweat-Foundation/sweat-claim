@@ -20,7 +20,6 @@ use crate::{
 
 mod common;
 mod measure;
-mod migration;
 mod prepare;
 
 #[tokio::test]
@@ -292,7 +291,8 @@ async fn insufficient_gas_on_burn() -> Result<()> {
 
     let result = manager
         .call(context.sweat_claim().contract.as_account().id(), "burn")
-        .gas(NearGas::from_tgas(9))
+        .args_json(json!({}))
+        .gas(NearGas::from_tgas(1))
         .transact()
         .await?
         .into_result();
