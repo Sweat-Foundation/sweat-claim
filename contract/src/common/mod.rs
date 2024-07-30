@@ -1,8 +1,22 @@
-use claim_model::{Duration, UnixTimestamp};
-use near_sdk::env::{block_timestamp_ms, panic_str};
+use claim_model::{
+    account_record::{AccountRecord, AccountRecordVersioned},
+    UnixTimestamp,
+};
+use near_sdk::{
+    env,
+    env::{block_timestamp_ms, panic_str},
+    store::LookupMap,
+    AccountId, Gas,
+};
 
-mod asserts;
+use crate::Contract;
+
+pub(crate) mod asserts;
 pub(crate) mod tests;
+
+pub(crate) fn remaining_gas() -> Gas {
+    env::prepaid_gas() - env::used_gas()
+}
 
 fn ms_timestamp_to_seconds(ms: u64) -> UnixTimestamp {
     u32::try_from(ms / 1000)
@@ -11,16 +25,6 @@ fn ms_timestamp_to_seconds(ms: u64) -> UnixTimestamp {
 
 pub(crate) fn now_seconds() -> UnixTimestamp {
     ms_timestamp_to_seconds(block_timestamp_ms())
-}
-
-pub(crate) trait UnixTimestampExtension {
-    fn is_within_period(&self, now: UnixTimestamp, period: Duration) -> bool;
-}
-
-impl UnixTimestampExtension for UnixTimestamp {
-    fn is_within_period(&self, now: UnixTimestamp, period: Duration) -> bool {
-        now - self < period
-    }
 }
 
 #[test]
@@ -36,4 +40,41 @@ fn convert_milliseconds_to_unix_timestamp_successfully() {
 fn convert_milliseconds_to_unix_timestamp_with_unsuccessfully() {
     let millis: u64 = u64::MAX;
     let _timestamp = ms_timestamp_to_seconds(millis);
+}
+
+pub type AccountMap = LookupMap<AccountId, AccountRecordVersioned>;
+
+pub(crate) trait AccountAccessor {
+    fn get_account(&self, account_id: &AccountId) -> &AccountRecord;
+
+    fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord;
+
+    fn get_or_insert_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord;
+}
+
+impl AccountAccessor for AccountMap {
+    fn get_account(&self, account_id: &AccountId) -> &AccountRecord {
+        let AccountRecordVersioned::V1(account) = self.get(account_id).expect("Account not found");
+        account
+    }
+
+    fn get_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
+        let AccountRecordVersioned::V1(account) = self.get_mut(account_id).expect("Account not found");
+        account
+    }
+
+    fn get_or_insert_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
+        if !self.contains_key(account_id) {
+            self.insert(account_id.clone(), AccountRecordVersioned::new(now_seconds()));
+        }
+
+        self.get_account_mut(account_id)
+    }
+}
+
+impl Contract {
+    pub(crate) fn get_claimable_window_start(&self) -> UnixTimestamp {
+        // Can be 0 only in tests.
+        now_seconds().saturating_sub(self.burn_period)
+    }
 }

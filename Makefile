@@ -37,6 +37,9 @@ fmt: ##@Chores Format the code using rustfmt nightly.
 lint: ##@Chores Run lint checks with Clippy.
 	./scripts/lint.sh
 
+charts: ##@Chores Render charts.
+	./scripts/render-charts.sh
+
 hash: ##@Chores Check if contract in commit has valid hash.
 	./scripts/check-contract-hash.sh
 

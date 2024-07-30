@@ -1,44 +1,43 @@
 use claim_model::{
-    account_record::AccountRecord,
     api::RecordApi,
-    event::{emit, EventKind::Record, RecordData},
+    event::{emit, EventKind::Record, RecordAmountDetailed, RecordData},
 };
-use near_sdk::{json_types::U128, near_bindgen, store::Vector, AccountId};
+use near_sdk::{json_types::U128, near_bindgen, AccountId};
 
-use crate::{common::now_seconds, Contract, ContractExt, StorageKey::AccrualsEntry};
+use crate::{
+    common::{now_seconds, AccountAccessor},
+    Contract, ContractExt,
+};
 
 #[near_bindgen]
 impl RecordApi for Contract {
     fn record_batch_for_hold(&mut self, amounts: Vec<(AccountId, U128)>) {
         self.assert_oracle();
 
-        let now_seconds = now_seconds();
-        let mut event_data = RecordData::new(now_seconds);
-
-        let balances = self
-            .accruals
-            .entry(now_seconds)
-            .or_insert_with(|| (Vector::new(AccrualsEntry(now_seconds)), 0));
+        // Default value can be 0 only in tests.
+        let claimable_window_start = self.get_claimable_window_start();
+        let mut event_data = RecordData::new(now_seconds());
 
         for (account_id, amount) in amounts {
-            event_data.amounts.push((account_id.clone(), amount));
+            let account = self.accounts.get_or_insert_account_mut(&account_id);
+            let balance_to_burn = account.get_balance_to_burn(self.burn_period, claimable_window_start);
 
-            let amount = amount.0;
-            let index = balances.0.len();
+            if balance_to_burn > 0 {
+                self.balance_to_burn += balance_to_burn;
 
-            balances.1 += amount;
-            balances.0.push(amount);
-
-            if let Some(record) = self.accounts.get_mut(&account_id) {
-                record.accruals.push((now_seconds, index));
-            } else {
-                let record = AccountRecord {
-                    accruals: vec![(now_seconds, index)],
-                    ..AccountRecord::new(now_seconds)
-                };
-
-                self.accounts.insert(account_id, record);
+                account.balance -= balance_to_burn;
+                account.burn_since = claimable_window_start;
             }
+
+            account.balance += amount.0;
+
+            event_data.amounts.push((
+                account_id.clone(),
+                RecordAmountDetailed {
+                    credited: amount,
+                    burnt: U128(balance_to_burn),
+                },
+            ));
         }
 
         emit(Record(event_data));

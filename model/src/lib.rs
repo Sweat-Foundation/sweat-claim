@@ -1,11 +1,11 @@
-pub mod account_record;
-pub mod api;
-pub mod event;
-
 use near_sdk::{
     json_types::U128,
     serde::{Deserialize, Serialize},
 };
+
+pub mod account_record;
+pub mod api;
+pub mod event;
 
 pub type UnixTimestamp = u32;
 pub type AccrualIndex = u32;
@@ -36,10 +36,24 @@ impl ClaimResultView {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct BurnStatus {
     pub min_claimable_ts: Option<UnixTimestamp>,
     pub claim_period_refreshed_at: UnixTimestamp,
     pub burn_period: Duration,
+}
+
+pub trait UnixTimestampExtension {
+    fn is_within_period(&self, now: UnixTimestamp, period: Duration) -> bool;
+}
+
+impl UnixTimestampExtension for UnixTimestamp {
+    fn is_within_period(&self, now: UnixTimestamp, period: Duration) -> bool {
+        now - self < period
+    }
+}
+
+pub fn get_burn_rate(balance: TokensAmount, burn_period: Duration) -> TokensAmount {
+    balance.div_ceil(burn_period.into())
 }

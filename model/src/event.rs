@@ -29,8 +29,8 @@ pub struct BurnData {
 #[serde(crate = "near_sdk::serde")]
 pub struct ClaimData {
     pub account_id: AccountId,
-    pub details: Vec<(UnixTimestamp, U128)>,
-    pub total_claimed: U128,
+    pub claimed: U128,
+    pub burnt: U128,
 }
 
 #[derive(Serialize, Debug)]
@@ -43,7 +43,14 @@ pub struct CleanData {
 #[serde(crate = "near_sdk::serde")]
 pub struct RecordData {
     pub timestamp: UnixTimestamp,
-    pub amounts: Vec<(AccountId, U128)>,
+    pub amounts: Vec<(AccountId, RecordAmountDetailed)>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(crate = "near_sdk::serde")]
+pub struct RecordAmountDetailed {
+    pub credited: U128,
+    pub burnt: U128,
 }
 
 impl RecordData {
@@ -80,7 +87,7 @@ pub fn emit(event: EventKind) {
 
 impl SweatClaimEvent {
     fn to_json_string(&self) -> String {
-        serde_json::to_string_pretty(self)
+        serde_json::to_string(self)
             .unwrap_or_else(|err| env::panic_str(&format!("Failed to serialize SweatClaimEvent: {err}")))
     }
 

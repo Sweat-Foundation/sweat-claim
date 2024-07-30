@@ -1,6 +1,6 @@
 [package]
 name = "sweat_claim"
-version = "1.0.3"
+version = "2.0.1"
 authors = ["Sweat Economy"]
 edition = "2021"
 
@@ -15,5 +15,8 @@ integration-api = ["claim-model/integration-api"]
 
 [dependencies]
 near-sdk = { workspace = true }
-
 claim-model = { workspace = true }
+
+[dev-dependencies]
+plotters = "0.3.5"
+rand = "0.8.5"

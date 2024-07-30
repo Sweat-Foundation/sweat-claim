@@ -1,62 +1,43 @@
 use claim_model::{
     api::ClaimApi,
     event::{emit, ClaimData, EventKind},
-    ClaimAvailabilityView, ClaimResultView, TokensAmount, UnixTimestamp,
+    ClaimAvailabilityView, ClaimResultView, TokensAmount, UnixTimestamp, UnixTimestampExtension,
 };
-use near_sdk::{env, json_types::U128, near_bindgen, require, store::Vector, AccountId, PromiseOrValue};
+use near_sdk::{env, json_types::U128, near_bindgen, require, AccountId, PromiseOrValue};
 
 use crate::{
-    common::{now_seconds, UnixTimestampExtension},
+    common::{now_seconds, AccountAccessor},
     Contract, ContractExt,
-    StorageKey::AccrualsEntry,
 };
 
 #[near_bindgen]
 impl ClaimApi for Contract {
     fn get_claimable_balance_for_account(&self, account_id: AccountId) -> U128 {
-        let Some(account_data) = self.accounts.get(&account_id) else {
-            return U128(0);
-        };
+        if let Some(account) = self.accounts.get(&account_id) {
+            let account = account.into_latest();
 
-        let mut total_accrual = 0;
-        let now = now_seconds();
+            let amount_to_burn = account.get_balance_to_burn(self.burn_period, self.get_claimable_window_start());
+            let amount_to_claim = account.balance - amount_to_burn;
 
-        for (datetime, index) in &account_data.accruals {
-            if !datetime.is_within_period(now, self.burn_period) {
-                continue;
-            }
-
-            let Some((accruals, _)) = self.accruals.get(datetime) else {
-                continue;
-            };
-
-            if let Some(amount) = accruals.get(*index) {
-                total_accrual += *amount;
-            }
+            return U128(amount_to_claim);
         }
 
-        U128(total_accrual)
+        U128(0)
     }
 
     fn is_claim_available(&self, account_id: AccountId) -> ClaimAvailabilityView {
-        let Some(account_data) = self.accounts.get(&account_id) else {
-            return ClaimAvailabilityView::Unregistered;
-        };
+        if let Some(account) = self.accounts.get(&account_id) {
+            let account = account.into_latest();
+            let claim_period_refreshed_at = account.claim_period_refreshed_at;
 
-        let claim_period_refreshed_at = account_data.claim_period_refreshed_at;
-        if claim_period_refreshed_at.is_within_period(now_seconds(), self.claim_period) {
-            ClaimAvailabilityView::Unavailable((claim_period_refreshed_at, self.claim_period))
-        } else {
-            let claimable_entries_count: u16 = account_data
-                .accruals
-                .iter()
-                .filter(|(datetime, _)| datetime.is_within_period(now_seconds(), self.burn_period))
-                .count()
-                .try_into()
-                .expect("To many claimable entries. Expected amount to fit into u16.");
-
-            ClaimAvailabilityView::Available(claimable_entries_count)
+            return if claim_period_refreshed_at.is_within_period(now_seconds(), self.claim_period) {
+                ClaimAvailabilityView::Unavailable((claim_period_refreshed_at, self.claim_period))
+            } else {
+                ClaimAvailabilityView::Available(0)
+            };
         }
+
+        ClaimAvailabilityView::Unregistered
     }
 
     fn claim(&mut self) -> PromiseOrValue<ClaimResultView> {
@@ -70,87 +51,60 @@ impl ClaimApi for Contract {
             "Claim is not available at the moment"
         );
 
-        let account_data = self.accounts.get_mut(&account_id).expect("Account data is not found");
-        require!(!account_data.is_locked, "Another operation is running");
+        let account = self.accounts.get_account(&account_id);
+        require!(!account.is_locked, "Another operation is running");
 
-        account_data.is_locked = true;
-
-        let now = now_seconds();
-        let mut total_accrual = 0;
-        let mut details = vec![];
-
-        for (datetime, index) in &account_data.accruals {
-            if !datetime.is_within_period(now, self.burn_period) {
-                continue;
-            }
-
-            let Some((accruals, total)) = self.accruals.get_mut(datetime) else {
-                continue;
-            };
-
-            let Some(amount) = accruals.get_mut(*index) else {
-                continue;
-            };
-
-            details.push((*datetime, *amount));
-
-            total_accrual += *amount;
-            *total -= *amount;
-            *amount = 0;
+        if account.balance == 0 {
+            return PromiseOrValue::Value(ClaimResultView::new(0));
         }
 
-        account_data.accruals.clear();
+        let amount_to_burn = account.get_balance_to_burn(self.burn_period, self.get_claimable_window_start());
+        let amount_to_claim = account.balance - amount_to_burn;
 
-        if total_accrual > 0 {
-            self.transfer_external(now, account_id, total_accrual, details)
-        } else {
-            account_data.is_locked = false;
-            PromiseOrValue::Value(ClaimResultView::new(0))
+        let account = self.accounts.get_or_insert_account_mut(&account_id);
+        account.balance = 0;
+
+        if amount_to_claim == 0 {
+            return PromiseOrValue::Value(self.on_claim_result(now_seconds(), account_id, 0, amount_to_burn, true));
         }
+
+        account.is_locked = true;
+        self.transfer_external(now_seconds(), account_id, amount_to_claim, amount_to_burn)
     }
 }
 
 impl Contract {
-    fn on_transfer_internal(
+    fn on_claim_result(
         &mut self,
         now: UnixTimestamp,
         account_id: AccountId,
-        total_accrual: TokensAmount,
-        details: Vec<(UnixTimestamp, TokensAmount)>,
+        amount_to_claim: TokensAmount,
+        amount_to_burn: TokensAmount,
         is_success: bool,
     ) -> ClaimResultView {
-        let account = self.accounts.get_mut(&account_id).expect("Account not found");
+        let account = self.accounts.get_or_insert_account_mut(&account_id);
         account.is_locked = false;
 
-        if is_success {
-            account.claim_period_refreshed_at = now;
-
-            let event_data = ClaimData {
-                account_id,
-                details: details
-                    .iter()
-                    .map(|(timestamp, amount)| (*timestamp, U128(*amount)))
-                    .collect(),
-                total_claimed: U128(total_accrual),
-            };
-            emit(EventKind::Claim(event_data));
-
-            return ClaimResultView::new(total_accrual);
+        if !is_success {
+            account.balance = amount_to_claim + amount_to_burn;
+            return ClaimResultView::new(0);
         }
 
-        for (timestamp, amount) in details {
-            let daily_accruals = self
-                .accruals
-                .entry(timestamp)
-                .or_insert_with(|| (Vector::new(AccrualsEntry(timestamp)), 0));
+        // `balance_to_burn` is updated here because parallel `burn` call can modify this value.
+        // In this case rolling back a user state to a previous state can lead to inconsistency.
+        self.balance_to_burn += amount_to_burn;
 
-            daily_accruals.0.push(amount);
-            daily_accruals.1 += amount;
+        account.claim_period_refreshed_at = now;
+        account.burn_since = now;
 
-            account.accruals.push((timestamp, daily_accruals.0.len() - 1));
-        }
+        let event_data = ClaimData {
+            account_id,
+            claimed: U128(amount_to_claim),
+            burnt: U128(amount_to_burn),
+        };
+        emit(EventKind::Claim(event_data));
 
-        ClaimResultView::new(0)
+        ClaimResultView::new(amount_to_claim)
     }
 }
 
@@ -158,10 +112,14 @@ impl Contract {
 mod prod {
     use claim_model::{ClaimResultView, TokensAmount, UnixTimestamp};
     use near_sdk::{
-        env, ext_contract, is_promise_success, near_bindgen, serde_json::json, AccountId, Gas, Promise, PromiseOrValue,
+        env, ext_contract, is_promise_success, near_bindgen, require, serde_json::json, AccountId, Gas, Promise,
+        PromiseOrValue,
     };
 
-    use crate::{Contract, ContractExt};
+    use crate::{common::asserts::assert_enough_gas, Contract, ContractExt};
+
+    const GAS_FOR_TRANSFER: Gas = Gas(5 * Gas::ONE_TERA.0);
+    const GAS_FOR_TRANSFER_CALLBACK: Gas = Gas(5 * Gas::ONE_TERA.0);
 
     #[ext_contract(ext_self)]
     pub trait SelfCallback {
@@ -169,8 +127,8 @@ mod prod {
             &mut self,
             now: UnixTimestamp,
             account_id: AccountId,
-            total_accrual: TokensAmount,
-            details: Vec<(UnixTimestamp, TokensAmount)>,
+            amount_to_claim: TokensAmount,
+            amount_to_burn: TokensAmount,
         ) -> ClaimResultView;
     }
 
@@ -181,10 +139,10 @@ mod prod {
             &mut self,
             now: UnixTimestamp,
             account_id: AccountId,
-            total_accrual: TokensAmount,
-            details: Vec<(UnixTimestamp, TokensAmount)>,
+            amount_to_claim: TokensAmount,
+            amount_to_burn: TokensAmount,
         ) -> ClaimResultView {
-            self.on_transfer_internal(now, account_id, total_accrual, details, is_promise_success())
+            self.on_claim_result(now, account_id, amount_to_claim, amount_to_burn, is_promise_success())
         }
     }
 
@@ -193,12 +151,19 @@ mod prod {
             &mut self,
             now: UnixTimestamp,
             account_id: AccountId,
-            total_accrual: TokensAmount,
-            details: Vec<(UnixTimestamp, TokensAmount)>,
+            amount_to_claim: TokensAmount,
+            amount_to_burn: TokensAmount,
         ) -> PromiseOrValue<ClaimResultView> {
+            require!(amount_to_claim > 0, "Cannot transfer zero tokens");
+            assert_enough_gas(GAS_FOR_TRANSFER + GAS_FOR_TRANSFER_CALLBACK);
+
+            let callback = ext_self::ext(env::current_account_id())
+                .with_static_gas(GAS_FOR_TRANSFER_CALLBACK)
+                .on_transfer(now, account_id.clone(), amount_to_claim, amount_to_burn);
+
             let args = json!({
-                "receiver_id": account_id,
-                "amount": total_accrual.to_string(),
+                "receiver_id": account_id.clone(),
+                "amount": amount_to_claim.to_string(),
                 "memo": "",
             })
             .to_string()
@@ -206,12 +171,8 @@ mod prod {
             .to_vec();
 
             Promise::new(self.token_account_id.clone())
-                .function_call("ft_transfer".to_string(), args, 1, Gas(5 * Gas::ONE_TERA.0))
-                .then(
-                    ext_self::ext(env::current_account_id())
-                        .with_static_gas(Gas(5 * Gas::ONE_TERA.0))
-                        .on_transfer(now, account_id, total_accrual, details),
-                )
+                .function_call("ft_transfer".to_string(), args, 1, GAS_FOR_TRANSFER)
+                .then(callback)
                 .into()
         }
     }
@@ -231,14 +192,14 @@ pub(crate) mod test {
             &mut self,
             now: UnixTimestamp,
             account_id: AccountId,
-            total_accrual: TokensAmount,
-            details: Vec<(UnixTimestamp, TokensAmount)>,
+            amount_to_claim: TokensAmount,
+            amount_to_burn: TokensAmount,
         ) -> PromiseOrValue<ClaimResultView> {
-            PromiseOrValue::Value(self.on_transfer_internal(
+            PromiseOrValue::Value(self.on_claim_result(
                 now,
                 account_id,
-                total_accrual,
-                details,
+                amount_to_claim,
+                amount_to_burn,
                 get_test_future_success(EXT_TRANSFER_FUTURE),
             ))
         }

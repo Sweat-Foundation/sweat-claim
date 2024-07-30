@@ -12,9 +12,8 @@ fn test_clean_single_account_by_oracle() {
 
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(100_000_000))]);
 
-    let record = contract.accounts.get(&accounts.alice);
-    assert!(record.is_some());
-    assert_eq!(1, record.unwrap().accruals.len());
+    let record = contract.accounts.get(&accounts.alice).unwrap().into_latest();
+    assert_ne!(0, record.balance);
 
     contract.clean(vec![accounts.alice.clone()]);
 
@@ -30,9 +29,8 @@ fn test_clean_single_account_by_not_oracle() {
 
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(100_000_000))]);
 
-    let record = contract.accounts.get(&accounts.alice);
-    assert!(record.is_some());
-    assert_eq!(1, record.unwrap().accruals.len());
+    let record = contract.accounts.get(&accounts.alice).unwrap().into_latest();
+    assert_ne!(0, record.balance);
 
     context.switch_account(&accounts.alice);
     contract.clean(vec![accounts.alice.clone()]);
@@ -48,13 +46,11 @@ fn test_clean_multiple_accounts_by_oracle() {
         (accounts.bob.clone(), U128(1_000_000_000)),
     ]);
 
-    let alice_record = contract.accounts.get(&accounts.alice);
-    assert!(alice_record.is_some());
-    assert_eq!(1, alice_record.unwrap().accruals.len());
+    let alice_record = contract.accounts.get(&accounts.alice).unwrap().into_latest();
+    assert_ne!(0, alice_record.balance);
 
-    let bob_record = contract.accounts.get(&accounts.bob);
-    assert!(bob_record.is_some());
-    assert_eq!(1, bob_record.unwrap().accruals.len());
+    let bob_record = contract.accounts.get(&accounts.bob).unwrap().into_latest();
+    assert_ne!(0, bob_record.balance);
 
     contract.clean(vec![accounts.alice.clone(), accounts.bob.clone()]);
 
