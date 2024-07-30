@@ -1,6 +1,6 @@
 [package]
 name = "sweat_claim"
-version = "2.0.1"
+version = "2.0.2"
 authors = ["Sweat Economy"]
 edition = "2021"
 
