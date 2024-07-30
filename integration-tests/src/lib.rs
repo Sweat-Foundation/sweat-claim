@@ -132,7 +132,7 @@ async fn burn_total() -> Result<()> {
 #[tokio::test]
 async fn burn_part() -> Result<()> {
     let claim_period = 0;
-    let burn_period = 10;
+    let burn_period = 1;
     let mut context = prepare_contract(Some(claim_period), Some(burn_period)).await?;
 
     let manager = context.manager().await?;

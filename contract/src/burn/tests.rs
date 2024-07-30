@@ -34,7 +34,7 @@ fn test_burn_when_outdated_tokens_exist() {
     contract.claim();
 
     context.switch_account(&accounts.oracle);
-    let burn_result = contract.burn();
+    let burn_result = contract.burn(None);
     let burnt_amount = match burn_result {
         PromiseOrValue::Promise(_) => panic!("Expected value"),
         PromiseOrValue::Value(value) => value.0,
@@ -42,6 +42,53 @@ fn test_burn_when_outdated_tokens_exist() {
 
     assert_eq!(alice_balance + bob_balance, burnt_amount);
     assert_eq!(0, contract.balance_to_burn);
+
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice).0;
+    assert_eq!(0, alice_new_balance);
+
+    let bob_new_balance = contract.get_claimable_balance_for_account(accounts.bob).0;
+    assert_eq!(0, bob_new_balance);
+
+    assert!(!contract.is_service_call_running);
+}
+
+#[test]
+fn test_partial_burn_when_outdated_tokens_exist() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    set_test_future_success(EXT_BURN_FUTURE, true);
+
+    let alice_balance = 100_000;
+    let bob_balance = 200_000;
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![
+        (accounts.alice.clone(), U128(alice_balance)),
+        (accounts.bob.clone(), U128(bob_balance)),
+    ]);
+
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
+
+    context.switch_account(&accounts.alice);
+    contract.claim();
+
+    context.switch_account(&accounts.bob);
+    contract.claim();
+
+    let target_total_to_burn = alice_balance + bob_balance;
+    let target_balance_to_burn = target_total_to_burn / 2;
+
+    context.switch_account(&accounts.oracle);
+    let burn_result = contract.burn(Some(U128::from(target_balance_to_burn)));
+    let burnt_amount = match burn_result {
+        PromiseOrValue::Promise(_) => panic!("Expected value"),
+        PromiseOrValue::Value(value) => value.0,
+    };
+
+    assert_eq!(target_balance_to_burn, burnt_amount);
+    assert_eq!(
+        target_total_to_burn - target_balance_to_burn,
+        contract.get_balance_to_burn().0
+    );
 
     let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice).0;
     assert_eq!(0, alice_new_balance);
@@ -75,7 +122,7 @@ fn test_ext_error_on_burn_when_outdated_tokens_exist() {
     contract.claim();
 
     context.switch_account(&accounts.oracle);
-    let burn_result = contract.burn();
+    let burn_result = contract.burn(None);
     let burnt_amount = match burn_result {
         PromiseOrValue::Promise(_) => panic!("Expected value"),
         PromiseOrValue::Value(value) => value.0,
@@ -100,7 +147,7 @@ fn test_burn_when_outdated_tokens_don_not_exist() {
     set_test_future_success(EXT_BURN_FUTURE, true);
 
     context.switch_account(&accounts.oracle);
-    let burn_result = contract.burn();
+    let burn_result = contract.burn(None);
     let burnt_amount = match burn_result {
         PromiseOrValue::Promise(_) => panic!("Expected value"),
         PromiseOrValue::Value(value) => value.0,
