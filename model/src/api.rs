@@ -5,7 +5,7 @@ use near_sdk::{json_types::U128, PromiseOrValue};
 use nitka::AccountId;
 use nitka_proc::make_integration_version;
 
-use crate::{BurnStatus, ClaimAvailabilityView, ClaimResultView, Duration, UnixTimestamp};
+use crate::{BurnStatus, ClaimAvailabilityView, ClaimResultView, ClaimableBalanceView, Duration, UnixTimestamp};
 
 #[cfg(feature = "integration-test")]
 pub struct ClaimContract<'a> {
@@ -208,7 +208,7 @@ pub trait ClaimApi {
     ///
     /// Returns a `U128` value indicating the amount of claimable tokens for the provided
     /// `account_id`.
-    fn get_claimable_balance_for_account(&self, account_id: AccountId) -> U128;
+    fn get_claimable_balance_for_account(&self, account_id: AccountId, detailed: Option<bool>) -> ClaimableBalanceView;
 
     /// Checks if the claim is available for a specified account.
     ///

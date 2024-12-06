@@ -1,7 +1,7 @@
 use claim_model::{
     api::ClaimApi,
     event::{emit, ClaimData, EventKind},
-    ClaimAvailabilityView, ClaimResultView, TokensAmount, UnixTimestamp, UnixTimestampExtension,
+    ClaimAvailabilityView, ClaimResultView, ClaimableBalanceView, TokensAmount, UnixTimestamp, UnixTimestampExtension,
 };
 use near_sdk::{env, json_types::U128, near_bindgen, require, AccountId, PromiseOrValue};
 
@@ -12,17 +12,19 @@ use crate::{
 
 #[near_bindgen]
 impl ClaimApi for Contract {
-    fn get_claimable_balance_for_account(&self, account_id: AccountId) -> U128 {
+    fn get_claimable_balance_for_account(&self, account_id: AccountId, detailed: Option<bool>) -> ClaimableBalanceView {
+        let detailed = detailed.unwrap_or(false);
+
         if let Some(account) = self.accounts.get(&account_id) {
             let account = account.into_latest();
 
             let amount_to_burn = account.get_balance_to_burn(self.burn_period, self.get_claimable_window_start());
             let amount_to_claim = account.balance - amount_to_burn;
 
-            return U128(amount_to_claim);
+            return ClaimableBalanceView::new(account.balance, amount_to_claim, detailed);
         }
 
-        U128(0)
+        ClaimableBalanceView::new(0, 0, detailed)
     }
 
     fn is_claim_available(&self, account_id: AccountId) -> ClaimAvailabilityView {

@@ -13,6 +13,34 @@ pub type TokensAmount = u128;
 pub type Duration = u32; // Period in seconds
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(crate = "near_sdk::serde")]
+#[serde(untagged)]
+pub enum ClaimableBalanceView {
+    Short(U128),
+    Detailed { total: U128, available: U128 },
+}
+
+impl ClaimableBalanceView {
+    pub fn new(total: TokensAmount, available: TokensAmount, detailed: bool) -> Self {
+        if detailed {
+            Self::Detailed {
+                total: total.into(),
+                available: available.into(),
+            }
+        } else {
+            Self::Short(available.into())
+        }
+    }
+
+    pub fn available_balance(&self) -> TokensAmount {
+        match self {
+            ClaimableBalanceView::Short(amount) => amount.0,
+            ClaimableBalanceView::Detailed { available, .. } => available.0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(crate = "near_sdk::serde", tag = "type", content = "data", rename_all = "snake_case")]
 pub enum ClaimAvailabilityView {
     /// Claim is available. Wrapped number is the amount of claimable entries.

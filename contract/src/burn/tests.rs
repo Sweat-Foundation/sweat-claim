@@ -2,7 +2,7 @@
 
 use claim_model::{
     api::{BurnApi, ClaimApi, RecordApi},
-    UnixTimestamp,
+    ClaimableBalanceView, UnixTimestamp,
 };
 use near_sdk::{json_types::U128, PromiseOrValue};
 
@@ -43,11 +43,11 @@ fn test_burn_when_outdated_tokens_exist() {
     assert_eq!(alice_balance + bob_balance, burnt_amount);
     assert_eq!(0, contract.balance_to_burn);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice, None);
+    assert_eq!(0, alice_new_balance.available_balance());
 
-    let bob_new_balance = contract.get_claimable_balance_for_account(accounts.bob).0;
-    assert_eq!(0, bob_new_balance);
+    let bob_new_balance = contract.get_claimable_balance_for_account(accounts.bob, None);
+    assert_eq!(0, bob_new_balance.available_balance());
 
     assert!(!contract.is_service_call_running);
 }
@@ -90,11 +90,11 @@ fn test_partial_burn_when_outdated_tokens_exist() {
         contract.get_balance_to_burn().0
     );
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice, None);
+    assert_eq!(0, alice_new_balance.available_balance());
 
-    let bob_new_balance = contract.get_claimable_balance_for_account(accounts.bob).0;
-    assert_eq!(0, bob_new_balance);
+    let bob_new_balance = contract.get_claimable_balance_for_account(accounts.bob, None);
+    assert_eq!(0, bob_new_balance.available_balance());
 
     assert!(!contract.is_service_call_running);
 }
@@ -132,11 +132,11 @@ fn test_ext_error_on_burn_when_outdated_tokens_exist() {
 
     assert_eq!(alice_balance + bob_balance, contract.balance_to_burn);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice, None);
+    assert_eq!(0, alice_new_balance.available_balance());
 
-    let bob_new_balance = contract.get_claimable_balance_for_account(accounts.bob).0;
-    assert_eq!(0, bob_new_balance);
+    let bob_new_balance = contract.get_claimable_balance_for_account(accounts.bob, None);
+    assert_eq!(0, bob_new_balance.available_balance());
 
     assert!(!contract.is_service_call_running);
 }
