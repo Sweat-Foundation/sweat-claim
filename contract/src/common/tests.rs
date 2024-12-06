@@ -1,14 +1,9 @@
 #![cfg(test)]
 
-use claim_model::{
-    account_record::AccountRecordLegacy,
-    api::InitApi,
-    event::{emit, EventKind::Record, RecordAmountDetailed, RecordData},
-    Duration, TokensAmount,
-};
-use near_sdk::{json_types::U128, store::Vector, test_utils::VMContextBuilder, testing_env, AccountId};
+use claim_model::{api::InitApi, Duration, TokensAmount};
+use near_sdk::{test_utils::VMContextBuilder, testing_env, AccountId};
 
-use crate::{common::now_seconds, Contract, StorageKey::_AccrualsEntryLegacy};
+use crate::Contract;
 
 pub(crate) struct Context {
     builder: VMContextBuilder,
@@ -156,7 +151,7 @@ pub(crate) mod data {
 pub(crate) mod balance_tests {
     use claim_model::{
         api::{ClaimApi, ConfigApi, RecordApi},
-        get_burn_rate,
+        get_burn_rate, ClaimableBalanceView,
     };
     use near_sdk::json_types::U128;
 
@@ -182,10 +177,10 @@ pub(crate) mod balance_tests {
             let seconds_after_burn_start: u64 = burn_period as u64 / i as u64;
             context.set_block_timestamp_in_seconds(burn_period as u64 + seconds_after_burn_start);
 
-            let alice_current_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
+            let alice_current_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
             assert_eq!(
                 alice_balance - alice_burn_rate * seconds_after_burn_start as u128,
-                alice_current_balance
+                alice_current_balance.available_balance()
             );
         }
     }

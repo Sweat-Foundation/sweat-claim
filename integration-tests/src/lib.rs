@@ -55,9 +55,12 @@ async fn happy_flow() -> Result<()> {
 
     let alice_deferred_balance = context
         .sweat_claim()
-        .get_claimable_balance_for_account(alice.to_near())
+        .get_claimable_balance_for_account(alice.to_near(), None)
         .await?;
-    assert_eq!(alice_deferred_balance.0, target_payout.amount_for_user);
+    assert_eq!(
+        alice_deferred_balance.available_balance(),
+        target_payout.amount_for_user
+    );
 
     let is_claim_available = context.sweat_claim().is_claim_available(alice.to_near()).await?;
     assert!(matches!(is_claim_available, ClaimAvailabilityView::Unavailable(_)));
@@ -118,9 +121,9 @@ async fn burn_total() -> Result<()> {
 
     let alice_deferred_balance = context
         .sweat_claim()
-        .get_claimable_balance_for_account(alice.to_near())
+        .get_claimable_balance_for_account(alice.to_near(), None)
         .await?;
-    assert_eq!(0, alice_deferred_balance.0);
+    assert_eq!(0, alice_deferred_balance.available_balance());
 
     let balance_to_burn = context.sweat_claim().get_balance_to_burn().await?;
     assert_eq!(0, balance_to_burn.0);
@@ -175,9 +178,9 @@ async fn burn_part() -> Result<()> {
 
     let alice_deferred_balance = context
         .sweat_claim()
-        .get_claimable_balance_for_account(alice.to_near())
+        .get_claimable_balance_for_account(alice.to_near(), None)
         .await?;
-    assert_eq!(0, alice_deferred_balance.0);
+    assert_eq!(0, alice_deferred_balance.available_balance());
 
     let balance_to_burn = context.sweat_claim().get_balance_to_burn().await?;
     assert_eq!(target_payout.amount_for_user - target_amount_to_burn, balance_to_burn.0);

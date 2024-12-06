@@ -2,9 +2,10 @@
 
 use claim_model::{
     api::{ClaimApi, ConfigApi, RecordApi},
-    ClaimAvailabilityView, UnixTimestamp,
+    ClaimAvailabilityView, ClaimableBalanceView, Duration, UnixTimestamp,
 };
 use near_sdk::{json_types::U128, PromiseOrValue};
+use plotters::prelude::LogScalable;
 
 use crate::{
     claim::api::test::EXT_TRANSFER_FUTURE,
@@ -18,8 +19,8 @@ use crate::{
 fn test_check_claim_availability_when_user_is_not_registered() {
     let (_, contract, accounts) = Context::init_with_oracle();
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
 
     let alice_can_claim = contract.is_claim_available(accounts.alice);
     assert_eq!(ClaimAvailabilityView::Unregistered, alice_can_claim);
@@ -33,8 +34,8 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_cla
     context.switch_account(&accounts.oracle);
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(alice_balance, alice_new_balance.available_balance());
 
     let claim_timestamp = contract.claim_period as u64 + 100;
     context.set_block_timestamp_in_seconds(claim_timestamp);
@@ -59,8 +60,8 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_cla
     context.switch_account(&accounts.oracle);
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(alice_balance, alice_new_balance.available_balance());
 
     let claim_timestamp = contract.claim_period as u64 + 100;
     context.set_block_timestamp_in_seconds(claim_timestamp);
@@ -82,8 +83,8 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_rec
     context.switch_account(&accounts.oracle);
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(alice_balance, alice_new_balance.available_balance());
 
     let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
     assert_eq!(
@@ -102,8 +103,8 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_rec
 
     context.set_block_timestamp_in_seconds(contract.claim_period as u64 + 100);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(alice_balance, alice_new_balance.available_balance());
 
     let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
     assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(0));
@@ -135,8 +136,8 @@ fn test_claim_when_user_is_not_registered() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
     set_test_future_success(EXT_TRANSFER_FUTURE, true);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
 
     context.switch_account(&accounts.alice);
     contract.claim();
@@ -166,8 +167,8 @@ fn test_claim_when_user_has_tokens_and_current_time_matches_claim_period() {
 
     context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
 
     let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
     assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(0));
@@ -191,8 +192,8 @@ fn test_claim_when_user_has_tokens_and_claim_period_is_passed() {
     };
     assert_eq!(alice_balance, claimed_amount.total.0);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
 }
 
 #[test]
@@ -213,8 +214,8 @@ fn test_claim_when_user_has_tokens_and_burn_period_is_passed() {
     };
     assert_eq!(0, claimed_amount.total.0);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
 }
 
 #[test]
@@ -235,8 +236,8 @@ fn test_claim_when_user_has_tokens_and_claim_period_is_passed_and_transfer_faile
     };
     assert_eq!(0, claimed_amount.total.0);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(alice_balance, alice_new_balance.available_balance());
 }
 
 #[test]
@@ -256,8 +257,8 @@ fn test_claim_when_user_has_fully_evaporated_balance() {
     };
     assert_eq!(0, claimed_amount.total.0);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
 
     assert_eq!(alice_top_up, contract.balance_to_burn);
     assert!(!contract.accounts.get_account(&accounts.alice).is_locked);
@@ -288,12 +289,48 @@ fn test_claim_when_user_has_zero_balance() {
     assert_eq!(0, claimed_amount.total.0);
 }
 
+#[test]
+fn test_claimable_balance_presentation() {
+    const BURN_PERIOD: Duration = 1_000;
+    const TEST_DURATION_FRACTION: f64 = 0.2;
+
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    context.switch_account(&accounts.oracle);
+    contract.set_claim_period(0);
+    contract.set_burn_period(BURN_PERIOD);
+
+    let alice_deposit = 100_000_000;
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), alice_deposit.into())]);
+
+    let test_time = (BURN_PERIOD.as_f64() * (1.0 + TEST_DURATION_FRACTION)) as u64;
+    context.set_block_timestamp_in_seconds(test_time);
+
+    let expected_total = alice_deposit;
+    let expected_available = expected_total - (expected_total as f64 * TEST_DURATION_FRACTION) as u128;
+
+    let ClaimableBalanceView::Detailed { total, available } =
+        contract.get_claimable_balance_for_account(accounts.alice.clone(), Some(true))
+    else {
+        panic!("Expected a detailed claimable balance view");
+    };
+    assert_eq!(expected_total, total.0);
+    assert_eq!(expected_available, available.0);
+
+    let ClaimableBalanceView::Short(available) =
+        contract.get_claimable_balance_for_account(accounts.alice.clone(), Some(false))
+    else {
+        panic!("Expected a short claimable balance view");
+    };
+    assert_eq!(expected_available, available.0);
+}
+
 mod demo {
     use std::env;
 
     use claim_model::{
         api::{ClaimApi, ConfigApi, RecordApi},
-        Duration, TokensAmount, UnixTimestamp,
+        ClaimableBalanceView, Duration, TokensAmount, UnixTimestamp,
     };
     use near_sdk::{json_types::U128, AccountId};
     use plotters::{
@@ -461,9 +498,9 @@ mod demo {
         let mut current_time = start_timestamp;
         while current_time <= end_timestamp {
             context.set_block_timestamp_in_seconds(current_time as _);
-            let available_for_claim = contract.get_claimable_balance_for_account(alice.clone()).0;
+            let available_for_claim = contract.get_claimable_balance_for_account(alice.clone(), None);
 
-            result.push((current_time, available_for_claim as _));
+            result.push((current_time, available_for_claim.available_balance() as _));
             current_time += step;
         }
 
