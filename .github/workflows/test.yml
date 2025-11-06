@@ -2,18 +2,17 @@ name: Test
 
 on:
   pull_request:
-    branches: [ main, dev ]
+    branches: [main, dev]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build
         run: make build
@@ -21,7 +20,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Lint
         run: make lint
@@ -30,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Integration tests
         run: make integration
@@ -38,7 +37,7 @@ jobs:
   check-binary-hash:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Hash
         run: make hash
