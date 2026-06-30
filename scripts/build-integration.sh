@@ -1,9 +1,12 @@
 #!/bin/bash
 set -eox pipefail
 
-echo ">> Building contract"
+echo ">> Building contract for integration tests"
 
-rustup target add wasm32-unknown-unknown
-cargo build -p sweat_claim --target wasm32-unknown-unknown --profile=contract --features integration-test
-
-cp ./target/wasm32-unknown-unknown/contract/sweat_claim.wasm res/sweat_claim.wasm
+# Same as build.sh, but with the `integration-test` feature enabled.
+cargo near build non-reproducible-wasm \
+  --no-abi \
+  --locked \
+  --features integration-test \
+  --manifest-path contract/Cargo.toml \
+  --out-dir res

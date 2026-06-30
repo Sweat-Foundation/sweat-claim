@@ -23,3 +23,16 @@ near-contract-standards = { git = "https://github.com/sweatco/near-sdk-rs", rev 
 
 [patch.crates-io]
 near-sdk = { git = "https://github.com/sweatco/near-sdk-rs", rev = "8c48b26cc48d969c1e5f3162141fe9c824fccecd" }
+
+# Optimized release profile for the contract wasm.
+# `cargo near build` builds with `--release` by default and picks this up, so no
+# custom `--profile` flag is needed (these flags are NOT injected by cargo-near).
+[profile.release]
+codegen-units = 1
+# Tell `rustc` to optimize for small code size.
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+# Opt into extra safety checks on arithmetic operations.
+overflow-checks = true
