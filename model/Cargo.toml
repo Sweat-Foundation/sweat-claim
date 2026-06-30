@@ -6,18 +6,9 @@ edition = "2021"
 [lib]
 name = "claim_model"
 
-[features]
-default = []
-integration-methods = []
-integration-test = ["dep:nitka", "dep:near-workspaces"]
-integration-api = ["dep:nitka", "dep:near-workspaces"]
-release-api = []
-
 [dependencies]
-anyhow = { workspace = true }
 near-sdk = { workspace = true }
 
-nitka = { workspace = true, optional = true }
-nitka-proc = { workspace = true }
-
-near-workspaces = { workspace = true, optional = true }
+[dev-dependencies]
+# Provides the mocked host environment so the crate's unit tests can link.
+near-sdk = { workspace = true, features = ["unit-testing"] }

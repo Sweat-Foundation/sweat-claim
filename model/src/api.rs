@@ -1,22 +1,11 @@
-#[cfg(feature = "release-api")]
-use near_sdk::AccountId;
-use near_sdk::{json_types::U128, PromiseOrValue};
-#[cfg(not(feature = "release-api"))]
-use nitka::AccountId;
-use nitka_proc::make_integration_version;
+use near_sdk::{json_types::U128, AccountId, PromiseOrValue};
 
 use crate::{BurnStatus, ClaimAvailabilityView, ClaimResultView, ClaimableBalanceView, Duration, UnixTimestamp};
-
-#[cfg(feature = "integration-test")]
-pub struct ClaimContract<'a> {
-    pub contract: &'a near_workspaces::Contract,
-}
 
 /// An API for initializing smart contracts in the context of fungible token operations.
 ///
 /// This API provides a method to initialize the smart contract, primarily for interactions
 /// with a specified fungible token contract.
-#[make_integration_version]
 pub trait InitApi {
     /// Initializes the smart contract with a specified fungible token contract.
     ///
@@ -38,7 +27,6 @@ pub trait InitApi {
 ///
 /// This API allows for dynamic configuration of certain operational parameters
 /// of the smart contract.
-#[make_integration_version]
 pub trait ConfigApi {
     /// Sets the claim period for the smart contract.
     ///
@@ -75,7 +63,6 @@ pub trait ConfigApi {
 ///
 /// This API allows managing of oracles, which are accounts authorized to perform
 /// sensitive operations.
-#[make_integration_version]
 pub trait AuthApi {
     /// Adds an oracle to the smart contract.
     ///
@@ -137,7 +124,6 @@ pub trait AuthApi {
 /// An API for burning unclaimed tokens in the smart contract. This is essential for
 /// managing the lifecycle of tokens and ensuring that unclaimed tokens are appropriately
 /// disposed of after a certain period.
-#[make_integration_version]
 pub trait BurnApi {
     /// Burns all unclaimed tokens older than `Contract.burn_period`.
     ///
@@ -172,7 +158,6 @@ pub trait BurnApi {
 }
 
 /// An API for recording (updating) user balances in the smart contract.
-#[make_integration_version]
 pub trait RecordApi {
     /// Records (updates) the balance for a batch of users.
     ///
@@ -193,7 +178,6 @@ pub trait RecordApi {
 }
 
 /// An API for managing the claiming process of accrued tokens in the smart contract.
-#[make_integration_version]
 pub trait ClaimApi {
     /// Retrieves the amount of claimable tokens for a specified account.
     ///
@@ -244,7 +228,6 @@ pub trait ClaimApi {
     fn claim(&mut self) -> PromiseOrValue<ClaimResultView>;
 }
 
-#[make_integration_version]
 pub trait MigrationApi {
     fn migrate() -> Self;
 

@@ -82,7 +82,7 @@ impl From<EventKind> for SweatClaimEvent {
 }
 
 pub fn emit(event: EventKind) {
-    log!(SweatClaimEvent::from(event).to_json_event_string());
+    log!("{}", SweatClaimEvent::from(event).to_json_event_string());
 }
 
 impl SweatClaimEvent {
@@ -100,41 +100,20 @@ impl SweatClaimEvent {
 mod test {
     use near_sdk::json_types::U128;
 
-    use crate::event::{BurnData, EventKind, SweatClaimEvent};
+    use crate::event::{BurnData, EventKind, SweatClaimEvent, VERSION};
 
     #[test]
     fn event_to_string() {
-        assert_eq!(
-            strip(
-                SweatClaimEvent::from(EventKind::Burn(BurnData {
-                    burnt_amount: U128(100_000_000),
-                }))
-                .to_json_event_string()
-                .as_str()
-            ),
-            strip(
-                r#"EVENT_JSON:{
-                "standard": "sweat_claim",
-                "version": "1.0.0",
-                "event": "burn",
-                "data": {
-                  "burnt_amount": "100000000"
-                }}"#
-            )
-        )
-    }
+        let event = SweatClaimEvent::from(EventKind::Burn(BurnData {
+            burnt_amount: U128(100_000_000),
+        }))
+        .to_json_event_string();
 
-    fn strip(s: &str) -> String {
-        let without_newlines: String = s.chars().filter(|&c| c != '\n').collect();
-        let mut previous_char = ' ';
-        let result: String = without_newlines
-            .chars()
-            .filter(|&c| {
-                let keep = !(c == ' ' && previous_char == ' ');
-                previous_char = c;
-                keep
-            })
-            .collect();
-        result
+        assert_eq!(
+            event,
+            format!(
+                r#"EVENT_JSON:{{"standard":"sweat_claim","version":"{VERSION}","event":"burn","data":{{"burnt_amount":"100000000"}}}}"#
+            )
+        );
     }
 }
