@@ -1,9 +1,6 @@
 #![allow(deprecated)]
 
-use near_sdk::{
-    borsh,
-    borsh::{BorshDeserialize, BorshSerialize},
-};
+use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 
 use crate::{get_burn_rate, AccrualIndex, Duration, TokensAmount, UnixTimestamp};
 
@@ -13,6 +10,7 @@ use crate::{get_burn_rate, AccrualIndex, Duration, TokensAmount, UnixTimestamp};
 /// the smart contract. It tracks various aspects of the account, such as accrual references,
 /// claim history, and operational states.
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug, PartialEq)]
+#[borsh(crate = "near_sdk::borsh")]
 pub struct AccountRecordLegacy {
     /// A list of references to accrual entries in `Contract.accruals`.
     ///
@@ -69,6 +67,7 @@ impl AccountRecordLegacy {
 }
 
 #[derive(BorshDeserialize, BorshSerialize)]
+#[borsh(crate = "near_sdk::borsh")]
 pub enum AccountRecordVersioned {
     V1(AccountRecordV1),
 }
@@ -79,6 +78,7 @@ pub enum AccountRecordVersioned {
 /// the smart contract. It tracks various aspects of the account, such as balance,
 /// burn status, and operational states.
 #[derive(BorshDeserialize, BorshSerialize)]
+#[borsh(crate = "near_sdk::borsh")]
 pub struct AccountRecordV1 {
     /// Represents the base balance of a user account.
     ///

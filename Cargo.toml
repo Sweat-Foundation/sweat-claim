@@ -3,26 +3,14 @@
 resolver = "2"
 
 default-members = ["contract"]
-members = ["contract", "integration-tests", "model"]
+# `integration-tests` is temporarily disabled while it is migrated off `nitka`
+# and `sweat-model`; it will be re-enabled in a later step.
+members = ["contract", "model"]
 
 [workspace.dependencies]
-fake = "2.9.2"
-rand = "0.8.5"
-anyhow = "1.0.79"
-tokio = "1.36"
-
-nitka = "0.1.1"
-nitka-proc = "0.1.1"
-
 claim-model = { path = "model" }
-sweat-model = { git = "https://github.com/sweatco/sweat-near", rev = "1fee5d917dc1f2eeb91ba4ac65eef35f173e9a47" }
 
-near-workspaces = "0.10.0"
-near-sdk = { git = "https://github.com/sweatco/near-sdk-rs", rev = "8c48b26cc48d969c1e5f3162141fe9c824fccecd" }
-near-contract-standards = { git = "https://github.com/sweatco/near-sdk-rs", rev = "8c48b26cc48d969c1e5f3162141fe9c824fccecd" }
-
-[patch.crates-io]
-near-sdk = { git = "https://github.com/sweatco/near-sdk-rs", rev = "8c48b26cc48d969c1e5f3162141fe9c824fccecd" }
+near-sdk = "5"
 
 # Optimized release profile for the contract wasm.
 # `cargo near build` builds with `--release` by default and picks this up, so no

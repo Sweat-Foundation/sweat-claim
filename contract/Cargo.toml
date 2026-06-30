@@ -7,17 +7,12 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-[features]
-default = ["release"]
-release = ["claim-model/release-api"]
-integration-test = ["claim-model/release-api", "claim-model/integration-methods"]
-integration-api = ["claim-model/integration-api"]
-
 [dependencies]
 near-sdk = { workspace = true }
 claim-model = { workspace = true }
 
 [dev-dependencies]
+near-sdk = { workspace = true, features = ["unit-testing"] }
 plotters = "0.3.5"
 rand = "0.8.5"
 

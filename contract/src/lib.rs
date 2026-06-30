@@ -1,10 +1,16 @@
+// near-sdk 5.x deprecated `store::UnorderedMap`/`UnorderedSet` in favour of
+// `IterableMap`/`IterableSet`. We intentionally keep the deprecated types because
+// switching would change the on-chain storage layout and require a state migration,
+// which is out of scope for this dependency update.
+#![allow(deprecated)]
+
 use claim_model::{
     account_record::{AccountRecordLegacy, AccountRecordVersioned},
     api::InitApi,
     Duration, TokensAmount, UnixTimestamp,
 };
 use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
+    borsh::{BorshDeserialize, BorshSerialize},
     near_bindgen,
     store::{LookupMap, UnorderedMap, UnorderedSet, Vector},
     AccountId, BorshStorageKey, PanicOnDefault,
@@ -24,6 +30,7 @@ const INITIAL_BURN_PERIOD_MS: u32 = 30 * 24 * 60 * 60;
 /// The main structure representing a smart contract for managing fungible tokens.
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
+#[borsh(crate = "near_sdk::borsh")]
 pub struct Contract {
     /// The account ID of the fungible token contract serviced by this smart contract.
     ///
@@ -91,6 +98,7 @@ pub struct Contract {
 }
 
 #[derive(BorshStorageKey, BorshSerialize)]
+#[borsh(crate = "near_sdk::borsh")]
 enum StorageKey {
     AccountsLegacy,
     Accruals,

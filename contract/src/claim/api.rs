@@ -114,17 +114,19 @@ impl Contract {
 mod prod {
     use claim_model::{ClaimResultView, TokensAmount, UnixTimestamp};
     use near_sdk::{
-        env, ext_contract, is_promise_success, near_bindgen, require, serde_json::json, AccountId, Gas, Promise,
-        PromiseOrValue,
+        env, ext_contract, is_promise_success, near_bindgen, require, serde_json::json, AccountId, Gas, NearToken,
+        Promise, PromiseOrValue,
     };
 
     use crate::{common::asserts::assert_enough_gas, Contract, ContractExt};
 
-    const GAS_FOR_TRANSFER: Gas = Gas(5 * Gas::ONE_TERA.0);
-    const GAS_FOR_TRANSFER_CALLBACK: Gas = Gas(5 * Gas::ONE_TERA.0);
+    const GAS_FOR_TRANSFER: Gas = Gas::from_tgas(5);
+    const GAS_FOR_TRANSFER_CALLBACK: Gas = Gas::from_tgas(5);
 
     #[ext_contract(ext_self)]
     pub trait SelfCallback {
+        // Invoked via the near_bindgen-generated wasm export; appears unused on the host build.
+        #[allow(dead_code)]
         fn on_transfer(
             &mut self,
             now: UnixTimestamp,
@@ -157,7 +159,7 @@ mod prod {
             amount_to_burn: TokensAmount,
         ) -> PromiseOrValue<ClaimResultView> {
             require!(amount_to_claim > 0, "Cannot transfer zero tokens");
-            assert_enough_gas(GAS_FOR_TRANSFER + GAS_FOR_TRANSFER_CALLBACK);
+            assert_enough_gas(GAS_FOR_TRANSFER.saturating_add(GAS_FOR_TRANSFER_CALLBACK));
 
             let callback = ext_self::ext(env::current_account_id())
                 .with_static_gas(GAS_FOR_TRANSFER_CALLBACK)
@@ -173,7 +175,7 @@ mod prod {
             .to_vec();
 
             Promise::new(self.token_account_id.clone())
-                .function_call("ft_transfer".to_string(), args, 1, GAS_FOR_TRANSFER)
+                .function_call("ft_transfer".to_string(), args, NearToken::from_yoctonear(1), GAS_FOR_TRANSFER)
                 .then(callback)
                 .into()
         }

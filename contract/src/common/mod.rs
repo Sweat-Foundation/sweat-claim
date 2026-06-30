@@ -15,7 +15,7 @@ pub(crate) mod asserts;
 pub(crate) mod tests;
 
 pub(crate) fn remaining_gas() -> Gas {
-    env::prepaid_gas() - env::used_gas()
+    env::prepaid_gas().saturating_sub(env::used_gas())
 }
 
 fn ms_timestamp_to_seconds(ms: u64) -> UnixTimestamp {
