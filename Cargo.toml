@@ -3,8 +3,10 @@
 resolver = "2"
 
 default-members = ["contract"]
-# `integration-tests` is temporarily disabled while it is migrated off `nitka`
-# and `sweat-model`; it will be re-enabled in a later step.
+# `integration-tests` is intentionally NOT a member: it is its own workspace
+# (see integration-tests/Cargo.toml) pinned to a newer toolchain so it can use a
+# recent `near-workspaces`, while the contract stays on the reproducible-build
+# toolchain. Run it with `make integration`.
 members = ["contract", "model"]
 
 [workspace.dependencies]

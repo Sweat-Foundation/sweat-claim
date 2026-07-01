@@ -1,6 +1,7 @@
 use near_workspaces::result::{ExecutionFailure, ExecutionResult, ExecutionSuccess};
 
-pub(crate) trait PanicFinder {
+/// Checks whether a transaction outcome panicked with a message containing `message`.
+pub trait PanicFinder {
     fn has_panic(&self, message: &str) -> bool;
 }
 
@@ -15,15 +16,12 @@ impl PanicFinder for Result<ExecutionSuccess, ExecutionFailure> {
 
 impl<T> PanicFinder for ExecutionResult<T> {
     fn has_panic(&self, message: &str) -> bool {
-        self.outcomes()
-            .into_iter()
-            .map(|item| match item.clone().into_result() {
-                Ok(_) => None,
-                Err(err) => Some(err),
-            })
-            .any(|item| match item {
-                None => false,
-                Some(err) => format!("{err:?}").contains(message),
-            })
+        self.outcomes().into_iter().any(|outcome| {
+            outcome
+                .clone()
+                .into_result()
+                .err()
+                .is_some_and(|err| format!("{err:?}").contains(message))
+        })
     }
 }

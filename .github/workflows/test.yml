@@ -14,6 +14,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Install cargo-near
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.19.0/cargo-near-installer.sh | sh
+
       - name: Build
         run: make build
 
@@ -25,16 +28,17 @@ jobs:
       - name: Lint
         run: make lint
 
-  # Integration tests are temporarily disabled while they are migrated off
-  # `nitka`/`sweat-model`. Re-enable this job once the crate builds again.
-  # integration-tests:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v5
-  #
-  #     - name: Integration tests
-  #       run: make integration
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install cargo-near
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.19.0/cargo-near-installer.sh | sh
+
+      - name: Integration tests
+        run: make integration
 
   check-binary-hash:
     runs-on: ubuntu-latest
