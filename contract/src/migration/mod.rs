@@ -7,12 +7,16 @@ use claim_model::{
 use near_plugins::AccessControllable;
 use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
-    env, near_bindgen,
+    env, near_bindgen, require,
     store::{LookupMap, UnorderedMap, UnorderedSet, Vector},
     AccountId,
 };
 
 use crate::{auth::Roles, Contract, ContractExt};
+
+mod tests;
+
+pub(crate) const WITHDRAWN_SWEAT: TokensAmount = 50_000_000 * 10u128.pow(18);
 
 #[derive(BorshDeserialize, BorshSerialize)]
 #[borsh(crate = "near_sdk::borsh")]
@@ -57,6 +61,12 @@ impl Contract {
                 .acl_get_or_init()
                 .grant_role_unchecked(Roles::Maintainer, oracle);
         }
+
+        require!(
+            contract.balance_to_burn >= WITHDRAWN_SWEAT,
+            "balance_to_burn is less than the 50M SWEAT already withdrawn"
+        );
+        contract.balance_to_burn -= WITHDRAWN_SWEAT;
 
         contract
     }
