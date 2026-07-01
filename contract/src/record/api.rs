@@ -2,18 +2,19 @@ use claim_model::{
     api::RecordApi,
     event::{emit, EventKind::Record, RecordAmountDetailed, RecordData},
 };
+use near_plugins::{access_control_any, AccessControllable};
 use near_sdk::{json_types::U128, near_bindgen, AccountId};
 
 use crate::{
+    auth::Roles,
     common::{now_seconds, AccountAccessor},
     Contract, ContractExt,
 };
 
 #[near_bindgen]
 impl RecordApi for Contract {
+    #[access_control_any(roles(Roles::Oracle))]
     fn record_batch_for_hold(&mut self, amounts: Vec<(AccountId, U128)>) {
-        self.assert_oracle();
-
         // Default value can be 0 only in tests.
         let claimable_window_start = self.get_claimable_window_start();
         let mut event_data = RecordData::new(now_seconds());

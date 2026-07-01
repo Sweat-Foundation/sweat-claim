@@ -1,7 +1,8 @@
 use claim_model::event::{emit, CleanData, EventKind};
+use near_plugins::{access_control_any, AccessControllable};
 use near_sdk::{near_bindgen, AccountId};
 
-use crate::{Contract, ContractExt};
+use crate::{auth::Roles, Contract, ContractExt};
 
 pub trait CleanApi {
     // Invoked via the near_bindgen-generated wasm export; appears unused on the host build.
@@ -11,9 +12,8 @@ pub trait CleanApi {
 
 #[near_bindgen]
 impl CleanApi for Contract {
+    #[access_control_any(roles(Roles::Maintainer))]
     fn clean(&mut self, account_ids: Vec<AccountId>) {
-        self.assert_oracle();
-
         for account_id in account_ids.clone() {
             if let Some(account) = self.accounts.get(&account_id) {
                 self.balance_to_burn += account.into_latest().balance;
