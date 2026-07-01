@@ -52,7 +52,7 @@ fn set_zero_burn_period() {
 }
 
 #[test]
-#[should_panic(expected = "Unauthorized access")]
+#[should_panic(expected = "Insufficient permissions")]
 fn set_claim_period_by_not_oracle() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
 
@@ -79,7 +79,7 @@ fn set_burn_period_by_oracle() {
 }
 
 #[test]
-#[should_panic(expected = "Unauthorized access")]
+#[should_panic(expected = "Insufficient permissions")]
 fn set_burn_period_by_not_oracle() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
 

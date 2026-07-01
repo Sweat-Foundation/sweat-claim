@@ -3,7 +3,7 @@
 use claim_model::{api::InitApi, Duration, TokensAmount};
 use near_sdk::{test_utils::VMContextBuilder, testing_env, AccountId};
 
-use crate::Contract;
+use crate::{auth::Roles, Contract};
 
 pub(crate) struct Context {
     builder: VMContextBuilder,
@@ -20,7 +20,10 @@ pub(crate) fn sweat_to_atto(sweat: u128) -> TokensAmount {
 impl Context {
     pub(crate) fn init_with_oracle() -> (Context, Contract, TestAccounts) {
         let (context, mut contract, accounts) = Self::init();
-        contract.oracles.insert(accounts.oracle.clone());
+
+        contract.acl_get_or_init().grant_role_unchecked(Roles::Oracle, &accounts.oracle);
+        contract.acl_get_or_init().grant_role_unchecked(Roles::BurnManager, &accounts.oracle);
+        contract.acl_get_or_init().grant_role_unchecked(Roles::Maintainer, &accounts.oracle);
 
         (context, contract, accounts)
     }

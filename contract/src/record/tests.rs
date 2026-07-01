@@ -41,7 +41,7 @@ fn record_by_oracle() {
 }
 
 #[test]
-#[should_panic(expected = "Unauthorized access! Only oracle can do this!")]
+#[should_panic(expected = "Insufficient permissions")]
 fn record_by_not_oracle() {
     let (_context, mut contract, accounts) = Context::init_with_oracle();
 
