@@ -19,6 +19,12 @@ rand = "0.8.5"
 
 # Configures the WASM-reproducible build (`cargo near build reproducible-wasm`),
 # per NEP-0330: https://github.com/near/NEPs/blob/master/neps/nep-0330.md
+#
+# Note: cargo-near 0.21.1+ embeds the exact git commit SHA into the wasm's NEP-330
+# metadata, so a byte-identical rebuild-vs-committed-wasm hash check across commits
+# is no longer meaningful (this obsoleted scripts/check-contract-hash.sh, removed).
+# That metadata is instead for post-deploy source verification of a deployed
+# on-chain contract, by external tools like SourceScan or near-verify-rs.
 [package.metadata.near.reproducible_build]
 # docker image, descriptor of build environment
 image = "sourcescan/cargo-near:0.21.1-rust-1.93.0"
