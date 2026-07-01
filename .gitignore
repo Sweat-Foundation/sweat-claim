@@ -35,3 +35,7 @@ yarn-debug.log*
 yarn-error.log*
 
 /res/sweat_claim_commit.wasm
+
+# Scratch workspace for the subagent-driven-development skill (task briefs,
+# review packages, progress ledger) — not part of the project.
+/.superpowers/
