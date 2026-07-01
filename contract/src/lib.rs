@@ -28,7 +28,7 @@ const INITIAL_CLAIM_PERIOD_MS: u32 = 24 * 60 * 60;
 const INITIAL_BURN_PERIOD_MS: u32 = 30 * 24 * 60 * 60;
 
 /// The main structure representing a smart contract for managing fungible tokens.
-#[near_bindgen]
+#[near_bindgen(contract_state)]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct Contract {
