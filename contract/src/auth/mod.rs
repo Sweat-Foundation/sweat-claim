@@ -1,5 +1,4 @@
 pub(crate) mod api;
-pub(crate) mod roles;
 mod tests;
 
-pub(crate) use roles::Roles;
+pub(crate) use crate::Roles;
