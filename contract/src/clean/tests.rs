@@ -22,7 +22,7 @@ fn test_clean_single_account_by_oracle() {
 }
 
 #[test]
-#[should_panic(expected = "Unauthorized access")]
+#[should_panic(expected = "Insufficient permissions")]
 fn test_clean_single_account_by_not_oracle() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
     context.switch_account(&accounts.oracle);
