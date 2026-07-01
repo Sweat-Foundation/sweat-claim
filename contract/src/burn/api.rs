@@ -1,5 +1,3 @@
-use std::cmp;
-
 use claim_model::{
     api::BurnApi,
     event::{emit, BurnData, EventKind},
@@ -17,7 +15,11 @@ impl BurnApi for Contract {
         require!(!self.is_service_call_running, "Another service call is running");
 
         let amount_to_burn = if let Some(amount) = amount {
-            cmp::min(self.balance_to_burn, amount.0)
+            require!(
+                amount.0 <= self.balance_to_burn,
+                "Requested amount exceeds the available balance to burn"
+            );
+            amount.0
         } else {
             self.balance_to_burn
         };
