@@ -137,15 +137,26 @@ fn claim_wasm_path() -> PathBuf {
     wasm_path(CLAIM_WASM_ENV, res_path("sweat_claim.wasm"))
 }
 
-async fn deploy(worker: &Worker<Sandbox>, path: PathBuf, label: &str, env_var: &str) -> Result<Contract> {
-    let bytes = std::fs::read(&path).map_err(|e| {
+fn read_wasm_bytes(path: PathBuf, label: &str, env_var: &str) -> Result<Vec<u8>> {
+    std::fs::read(&path).map_err(|e| {
         anyhow!(
             "failed to read {label} WASM at {} — did you run `make build-integration`? \
              Override the path with the {env_var} env var. ({e})",
             path.display()
         )
-    })?;
+    })
+}
+
+async fn deploy(worker: &Worker<Sandbox>, path: PathBuf, label: &str, env_var: &str) -> Result<Contract> {
+    let bytes = read_wasm_bytes(path, label, env_var)?;
     Ok(worker.dev_deploy(&bytes).await?)
+}
+
+/// Reads the currently-built `claim` contract wasm bytes (same path `deploy` uses
+/// for the `claim` contract) — for tests that need to stage/deploy raw code
+/// rather than just deploying a fresh instance of it.
+pub fn claim_wasm_bytes() -> Result<Vec<u8>> {
+    read_wasm_bytes(claim_wasm_path(), "claim", CLAIM_WASM_ENV)
 }
 
 async fn create_user(root: &Account, name: &str) -> Result<Account> {
