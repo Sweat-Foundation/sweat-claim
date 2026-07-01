@@ -86,7 +86,12 @@ pub trait AuthApi {
 /// managing the lifecycle of tokens and ensuring that unclaimed tokens are appropriately
 /// disposed of after a certain period.
 pub trait BurnApi {
-    /// Burns all unclaimed tokens older than `Contract.burn_period`.
+    /// Burns unclaimed tokens older than `Contract.burn_period`.
+    ///
+    /// # Arguments
+    ///
+    /// * `amount` - If `Some`, burns exactly this amount. If `None`, burns everything
+    ///   currently available (`Contract.balance_to_burn`).
     ///
     /// # Returns
     ///
@@ -94,8 +99,9 @@ pub trait BurnApi {
     ///
     /// # Panics
     ///
-    /// Panics if called by any entity other than the oracle. Only the oracle has the
-    /// authority to initiate the burn process.
+    /// Panics if called by any account that doesn't hold the `BurnManager` role.
+    ///
+    /// Panics if `amount` is `Some` and exceeds `Contract.balance_to_burn`.
     ///
     /// Panics if another service call is running.
     fn burn(&mut self, amount: Option<U128>) -> PromiseOrValue<U128>;

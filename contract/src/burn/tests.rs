@@ -100,6 +100,26 @@ fn test_partial_burn_when_outdated_tokens_exist() {
 }
 
 #[test]
+#[should_panic(expected = "Requested amount exceeds the available balance to burn")]
+fn test_burn_amount_exceeding_available_panics() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    set_test_future_success(EXT_BURN_FUTURE, true);
+
+    let alice_balance = 100_000;
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
+
+    context.switch_account(&accounts.alice);
+    contract.claim();
+
+    context.switch_account(&accounts.oracle);
+    contract.burn(Some(U128::from(alice_balance + 1)));
+}
+
+#[test]
 fn test_ext_error_on_burn_when_outdated_tokens_exist() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
     set_test_future_success(EXT_BURN_FUTURE, false);
