@@ -5,15 +5,15 @@ use claim_model::{
     event::{emit, BurnData, EventKind},
     BurnStatus, TokensAmount,
 };
+use near_plugins::{access_control_any, AccessControllable};
 use near_sdk::{json_types::U128, near_bindgen, require, AccountId, PromiseOrValue};
 
-use crate::{common::AccountAccessor, Contract, ContractExt};
+use crate::{auth::Roles, common::AccountAccessor, Contract, ContractExt};
 
 #[near_bindgen]
 impl BurnApi for Contract {
+    #[access_control_any(roles(Roles::BurnManager))]
     fn burn(&mut self, amount: Option<U128>) -> PromiseOrValue<U128> {
-        self.assert_oracle();
-
         require!(!self.is_service_call_running, "Another service call is running");
 
         let amount_to_burn = if let Some(amount) = amount {
