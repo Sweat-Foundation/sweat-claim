@@ -63,6 +63,8 @@ pub async fn prepare_contract(claim_period: Option<u32>, burn_period: Option<u32
 
     // Oracle wiring: manager may defer on the token and operate the claim contract;
     // the token contract may call `record_batch_for_hold` on the claim contract.
+    // `claim`'s own account is the only account with `acl_grant_role` permission
+    // (it made itself super-admin in `init`), so these calls must be signed by `claim` itself.
     sweat
         .call("add_oracle")
         .args_json(json!({ "account_id": manager.id() }))
@@ -70,17 +72,19 @@ pub async fn prepare_contract(claim_period: Option<u32>, burn_period: Option<u32
         .await?
         .into_result()?;
     claim
-        .call("add_oracle")
-        .args_json(json!({ "account_id": sweat.id() }))
+        .call("acl_grant_role")
+        .args_json(json!({ "role": "Oracle", "account_id": sweat.id() }))
         .transact()
         .await?
         .into_result()?;
-    claim
-        .call("add_oracle")
-        .args_json(json!({ "account_id": manager.id() }))
-        .transact()
-        .await?
-        .into_result()?;
+    for role in ["Oracle", "BurnManager", "Maintainer"] {
+        claim
+            .call("acl_grant_role")
+            .args_json(json!({ "role": role, "account_id": manager.id() }))
+            .transact()
+            .await?
+            .into_result()?;
+    }
 
     // Register the claim contract and alice for FT storage, then seed alice.
     storage_deposit(&sweat, claim.id()).await?;
