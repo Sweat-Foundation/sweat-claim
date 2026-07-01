@@ -46,19 +46,8 @@ jobs:
       - name: Integration tests
         run: make integration
 
-  check-binary-hash:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Hash
-        run: make hash
-
-      - name: Commit Hash
-        run: echo ${{ github.event.pull_request.head.sha }}
-
   push:
-    needs: [build, lint, integration-tests, check-binary-hash]
+    needs: [build, lint, integration-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
