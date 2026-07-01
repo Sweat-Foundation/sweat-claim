@@ -1,0 +1,4 @@
+[toolchain]
+# Pinned ahead of the contract's toolchain so integration tests can use a recent
+# `near-workspaces` (which requires a newer rustc than the reproducible build).
+channel = "1.93"
