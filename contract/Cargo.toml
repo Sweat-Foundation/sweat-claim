@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk = { workspace = true }
 claim-model = { workspace = true }
+near-plugins = "0.5.3"
 
 [dev-dependencies]
 near-sdk = { workspace = true, features = ["unit-testing"] }
