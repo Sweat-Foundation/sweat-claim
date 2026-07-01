@@ -3,7 +3,7 @@ set -eox pipefail
 
 rustup component add clippy
 
-cargo clippy -p sweat_claim \
+cargo clippy -p sweat_claim --target wasm32-unknown-unknown \
   -- \
   \
   -W clippy::all \
