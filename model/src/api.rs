@@ -59,56 +59,17 @@ pub trait ConfigApi {
     fn set_burn_period(&mut self, period: Duration);
 }
 
-/// An API for managing authorization of oracles for sensitive operations in the smart contract.
+/// An API for authorization-related maintenance operations in the smart contract.
 ///
-/// This API allows managing of oracles, which are accounts authorized to perform
-/// sensitive operations.
+/// Role management (granting/revoking roles such as `Oracle`, `BurnManager`, and `Maintainer`)
+/// is handled by near-plugins's `AccessControllable` (`acl_grant_role`/`acl_revoke_role`/
+/// `acl_get_grantees`), not by this trait.
 pub trait AuthApi {
-    /// Adds an oracle to the smart contract.
-    ///
-    /// Registers an oracle identified by `account_id`, authorizing them for sensitive operations.
-    /// This method is private and can only be called by the account where the contract is deployed.
-    /// It will panic if an attempt is made to register the same oracle twice.
-    ///
-    /// # Arguments
-    ///
-    /// * `account_id` - An `AccountId` representing the oracle to be added.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the oracle is already registered.
-    fn add_oracle(&mut self, account_id: AccountId);
-
-    /// Removes an oracle from the smart contract.
-    ///
-    /// Revokes authorization from an oracle identified by `account_id`. This method is private
-    /// and can only be called by the account where the contract is deployed. It will panic
-    /// if there is no registered oracle with the specified `account_id`.
-    ///
-    /// # Arguments
-    ///
-    /// * `account_id` - An `AccountId` representing the oracle to be removed.
-    ///
-    /// # Panics
-    ///
-    /// Panics if no oracle with the specified `account_id` is registered.
-    fn remove_oracle(&mut self, account_id: AccountId);
-
-    /// Retrieves the list of registered oracles.
-    ///
-    /// Returns a vector of `AccountId`s representing the oracles currently authorized
-    /// for sensitive operations.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `Vec<AccountId>` containing the account IDs of the registered oracles.
-    fn get_oracles(&self) -> Vec<AccountId>;
-
     /// Unlocks the specified account.
     ///
-    /// This method allows an oracle to unlock an account that may have been locked due to an error
-    /// occurring during a cross-contract call. When a cross-contract call fails, the account might
-    /// be locked to prevent further operations until the error is resolved.
+    /// This method allows a `Maintainer` to unlock an account that may have been locked due to an
+    /// error occurring during a cross-contract call. When a cross-contract call fails, the account
+    /// might be locked to prevent further operations until the error is resolved.
     ///
     /// # Arguments
     ///
@@ -116,8 +77,8 @@ pub trait AuthApi {
     ///
     /// # Panics
     ///
-    /// This method will panic if it is called by someone other than the oracle or if the specified
-    /// account is not found.
+    /// This method will panic if the caller does not hold the `Maintainer` role, or if the
+    /// specified account is not found.
     fn unlock_account(&mut self, account_id: AccountId);
 }
 
