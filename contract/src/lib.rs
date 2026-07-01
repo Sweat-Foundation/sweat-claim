@@ -9,10 +9,11 @@ use claim_model::{
     api::InitApi,
     Duration, TokensAmount, UnixTimestamp,
 };
+use near_plugins::{access_control, AccessControlRole, AccessControllable};
 use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
-    near_bindgen,
-    store::{LookupMap, UnorderedMap, UnorderedSet, Vector},
+    env, near, near_bindgen,
+    store::{LookupMap, UnorderedMap, Vector},
     AccountId, BorshStorageKey, PanicOnDefault,
 };
 
@@ -27,7 +28,15 @@ mod record;
 const INITIAL_CLAIM_PERIOD_MS: u32 = 24 * 60 * 60;
 const INITIAL_BURN_PERIOD_MS: u32 = 30 * 24 * 60 * 60;
 
+#[derive(AccessControlRole, Copy, Clone)]
+pub enum Roles {
+    Oracle,
+    BurnManager,
+    Maintainer,
+}
+
 /// The main structure representing a smart contract for managing fungible tokens.
+#[access_control(role_type(Roles))]
 #[near_bindgen(contract_state)]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[borsh(crate = "near_sdk::borsh")]
@@ -37,12 +46,6 @@ pub struct Contract {
     /// This field specifies the associated fungible token contract with which this smart
     /// contract interacts.
     token_account_id: AccountId,
-
-    /// A set of account IDs authorized to perform sensitive operations within the contract.
-    ///
-    /// `oracles` represents the entities that have the authority to execute critical
-    /// functions such as burning tokens. These accounts are trusted and have elevated privileges.
-    oracles: UnorderedSet<AccountId>,
 
     /// The period in seconds during which tokens are locked after being claimed.
     ///
@@ -103,7 +106,9 @@ enum StorageKey {
     AccountsLegacy,
     Accruals,
     _AccrualsEntryLegacy(u32),
-    Oracles,
+    // Renamed, not removed: deleting this variant would shift `Accounts`'s Borsh
+    // discriminant (its storage-prefix byte), silently orphaning all stored balances.
+    _OraclesLegacy,
     Accounts,
 }
 
@@ -113,13 +118,12 @@ impl InitApi for Contract {
     fn init(token_account_id: AccountId) -> Self {
         Self::assert_private();
 
-        Self {
+        let mut contract = Self {
             token_account_id,
 
             accounts_legacy: LookupMap::new(StorageKey::AccountsLegacy),
             accounts: LookupMap::new(StorageKey::Accounts),
             accruals: UnorderedMap::new(StorageKey::Accruals),
-            oracles: UnorderedSet::new(StorageKey::Oracles),
 
             claim_period: INITIAL_CLAIM_PERIOD_MS,
             burn_period: INITIAL_BURN_PERIOD_MS,
@@ -127,6 +131,10 @@ impl InitApi for Contract {
             is_service_call_running: false,
 
             balance_to_burn: 0,
-        }
+        };
+
+        contract.acl_init_super_admin(env::current_account_id());
+
+        contract
     }
 }
