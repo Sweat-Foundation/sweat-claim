@@ -9,7 +9,7 @@ use claim_model::{
     api::InitApi,
     Duration, TokensAmount, UnixTimestamp,
 };
-use near_plugins::{access_control, AccessControlRole, AccessControllable};
+use near_plugins::{access_control, AccessControlRole, AccessControllable, Upgradable};
 use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
     env, near, near_bindgen,
@@ -34,12 +34,21 @@ pub enum Roles {
     Oracle,
     BurnManager,
     Maintainer,
+    StagingManager,
+    UpgradeManager,
 }
 
 /// The main structure representing a smart contract for managing fungible tokens.
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, Upgradable)]
 #[access_control(role_type(Roles))]
+#[upgradable(access_control_roles(
+    code_stagers(Roles::StagingManager),
+    code_deployers(Roles::UpgradeManager),
+    duration_initializers(Roles::UpgradeManager),
+    duration_update_stagers(Roles::UpgradeManager),
+    duration_update_appliers(Roles::UpgradeManager),
+))]
 #[near_bindgen(contract_state)]
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct Contract {
     /// The account ID of the fungible token contract serviced by this smart contract.
