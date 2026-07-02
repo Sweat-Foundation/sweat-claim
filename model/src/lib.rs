@@ -5,7 +5,6 @@ pub mod api;
 pub mod event;
 
 pub type UnixTimestamp = u32;
-pub type AccrualIndex = u32;
 pub type TokensAmount = u128;
 pub type Duration = u32; // Period in seconds
 
