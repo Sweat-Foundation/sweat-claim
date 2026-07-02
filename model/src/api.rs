@@ -80,6 +80,19 @@ pub trait AuthApi {
     /// This method will panic if the caller does not hold the `Maintainer` role, or if the
     /// specified account is not found.
     fn unlock_account(&mut self, account_id: AccountId);
+
+    /// Resets the contract-wide service call flag.
+    ///
+    /// `burn()` sets this flag while its cross-contract burn call is in flight and clears it
+    /// in the callback; if that callback ever panics before clearing it (e.g. an unexpected
+    /// token-contract response), every subsequent `burn()` call would be permanently blocked
+    /// with no recovery path. This gives a `Maintainer` the same kind of escape hatch
+    /// `unlock_account` provides for a stuck per-account `is_locked` flag.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if the caller does not hold the `Maintainer` role.
+    fn reset_service_call_flag(&mut self);
 }
 
 /// An API for burning unclaimed tokens in the smart contract. This is essential for

@@ -235,6 +235,38 @@ async fn unlock_account_by_non_maintainer_panics() -> anyhow::Result<()> {
 
 #[tokio::test]
 #[tracing::instrument]
+async fn reset_service_call_flag_by_maintainer_succeeds() -> anyhow::Result<()> {
+    let context = prepare_contract(None, None).await?;
+
+    let result = context
+        .manager
+        .call(context.claim.id(), "reset_service_call_flag")
+        .transact()
+        .await?
+        .into_result();
+
+    assert!(result.is_ok());
+    Ok(())
+}
+
+#[tokio::test]
+#[tracing::instrument]
+async fn reset_service_call_flag_by_non_maintainer_panics() -> anyhow::Result<()> {
+    let context = prepare_contract(None, None).await?;
+
+    let result = context
+        .alice
+        .call(context.claim.id(), "reset_service_call_flag")
+        .transact()
+        .await?
+        .into_result();
+
+    assert!(result.has_panic(INSUFFICIENT_PERMISSIONS));
+    Ok(())
+}
+
+#[tokio::test]
+#[tracing::instrument]
 async fn role_holder_without_the_right_role_is_still_rejected() -> anyhow::Result<()> {
     // `manager` holds Oracle/BurnManager/Maintainer (see prepare.rs), so use a
     // freshly-granted single-role account to prove roles don't cross-authorize

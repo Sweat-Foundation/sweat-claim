@@ -80,3 +80,26 @@ fn unlock_account_not_by_maintainer() {
     context.switch_account(&alice_id);
     contract.unlock_account(alice_id.clone());
 }
+
+#[test]
+fn reset_service_call_flag_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    contract.is_service_call_running = true;
+
+    context.switch_account(&accounts.oracle);
+    contract.reset_service_call_flag();
+
+    assert!(!contract.is_service_call_running);
+}
+
+#[test]
+#[should_panic(expected = "Insufficient permissions")]
+fn reset_service_call_flag_not_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    contract.is_service_call_running = true;
+
+    context.switch_account(&accounts.alice);
+    contract.reset_service_call_flag();
+}
