@@ -6,7 +6,7 @@ use claim_model::{
 };
 use near_sdk::json_types::U128;
 
-use crate::common::{tests::Context, AccountAccessor, MAX_BATCH_SIZE};
+use crate::common::{tests::Context, AccountAccessor, MAX_RECORD_BATCH_SIZE};
 
 #[test]
 fn record_by_oracle() {
@@ -86,7 +86,7 @@ fn record_batch_for_hold_rejects_a_batch_over_the_max_size() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
     context.switch_account(&accounts.oracle);
 
-    let amounts: Vec<_> = (0..=MAX_BATCH_SIZE)
+    let amounts: Vec<_> = (0..=MAX_RECORD_BATCH_SIZE)
         .map(|i| (format!("account{i}").parse().unwrap(), U128(1)))
         .collect();
     contract.record_batch_for_hold(amounts);

@@ -7,7 +7,7 @@ use near_sdk::{json_types::U128, near_bindgen, require, AccountId};
 
 use crate::{
     auth::Roles,
-    common::{now_seconds, AccountAccessor, MAX_BATCH_SIZE},
+    common::{now_seconds, AccountAccessor, MAX_RECORD_BATCH_SIZE},
     Contract, ContractExt,
 };
 
@@ -15,7 +15,10 @@ use crate::{
 impl RecordApi for Contract {
     #[access_control_any(roles(Roles::Oracle))]
     fn record_batch_for_hold(&mut self, amounts: Vec<(AccountId, U128)>) {
-        require!(amounts.len() <= MAX_BATCH_SIZE, "Batch size exceeds the maximum allowed");
+        require!(
+            amounts.len() <= MAX_RECORD_BATCH_SIZE,
+            "Batch size exceeds the maximum allowed"
+        );
 
         // Default value can be 0 only in tests.
         let claimable_window_start = self.get_claimable_window_start();

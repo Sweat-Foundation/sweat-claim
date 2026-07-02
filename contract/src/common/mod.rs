@@ -18,12 +18,18 @@ pub(crate) fn remaining_gas() -> Gas {
     env::prepaid_gas().saturating_sub(env::used_gas())
 }
 
-/// Upper bound on batch-shaped inputs (`record_batch_for_hold`, `clean`).
-/// Defense-in-depth against an oversized batch OOG-ing mid-call or degrading
-/// off-chain monitoring granularity (e.g. `clean`'s single event covering an
-/// enormous batch) — both methods are already role-gated, so this isn't
-/// protecting against an external attacker, just operational error.
-pub(crate) const MAX_BATCH_SIZE: usize = 150;
+/// Upper bound on `record_batch_for_hold`'s batch size. Defense-in-depth
+/// against an oversized batch OOG-ing mid-call — the method is already
+/// role-gated, so this isn't protecting against an external attacker, just
+/// operational error. Split from `MAX_CLEAN_BATCH_SIZE` so the two can be
+/// tuned independently (per-account cost differs between the two methods).
+pub(crate) const MAX_RECORD_BATCH_SIZE: usize = 150;
+
+/// Upper bound on `clean`'s batch size. Same defense-in-depth rationale as
+/// `MAX_RECORD_BATCH_SIZE`, plus: `clean`'s single `Clean` event covers the
+/// whole batch regardless of size, so an oversized batch also degrades
+/// off-chain monitoring granularity.
+pub(crate) const MAX_CLEAN_BATCH_SIZE: usize = 150;
 
 fn ms_timestamp_to_seconds(ms: u64) -> UnixTimestamp {
     u32::try_from(ms / 1000)
