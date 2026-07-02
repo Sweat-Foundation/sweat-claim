@@ -64,11 +64,11 @@ impl AccountAccessor for AccountMap {
     }
 
     fn get_or_insert_account_mut(&mut self, account_id: &AccountId) -> &mut AccountRecord {
-        if !self.contains_key(account_id) {
-            self.insert(account_id.clone(), AccountRecordVersioned::new(now_seconds()));
-        }
-
-        self.get_account_mut(account_id)
+        let versioned = self
+            .entry(account_id.clone())
+            .or_insert_with(|| AccountRecordVersioned::new(now_seconds()));
+        let AccountRecordVersioned::V1(account) = versioned;
+        account
     }
 }
 
