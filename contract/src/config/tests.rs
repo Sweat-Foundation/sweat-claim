@@ -87,3 +87,22 @@ fn set_burn_period_by_not_oracle() {
     context.switch_account(&accounts.alice);
     contract.set_burn_period(burn_period);
 }
+
+#[test]
+#[should_panic(expected = "Claim period exceeds the maximum allowed")]
+fn set_claim_period_exceeding_max_panics() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    contract.burn_period = u32::MAX;
+
+    context.switch_account(&accounts.oracle);
+    contract.set_claim_period(u32::MAX / 2);
+}
+
+#[test]
+#[should_panic(expected = "Burn period exceeds the maximum allowed")]
+fn set_burn_period_exceeding_max_panics() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    context.switch_account(&accounts.oracle);
+    contract.set_burn_period(u32::MAX / 2);
+}

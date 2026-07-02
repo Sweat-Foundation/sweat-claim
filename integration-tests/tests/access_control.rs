@@ -112,6 +112,43 @@ async fn set_claim_period_by_non_maintainer_panics() -> anyhow::Result<()> {
 
 #[tokio::test]
 #[tracing::instrument]
+async fn set_claim_period_above_one_year_panics() -> anyhow::Result<()> {
+    let context = prepare_contract(None, None).await?;
+
+    // Without an upper bound, this single call would freeze claim() contract-wide
+    // for every existing account by making claim_period_refreshed_at look
+    // "recently refreshed" indefinitely.
+    let result = context
+        .manager
+        .call(context.claim.id(), "set_claim_period")
+        .args_json(json!({ "period": u32::MAX / 2 }))
+        .transact()
+        .await?
+        .into_result();
+
+    assert!(result.has_panic("Claim period exceeds the maximum allowed"));
+    Ok(())
+}
+
+#[tokio::test]
+#[tracing::instrument]
+async fn set_burn_period_above_one_year_panics() -> anyhow::Result<()> {
+    let context = prepare_contract(None, None).await?;
+
+    let result = context
+        .manager
+        .call(context.claim.id(), "set_burn_period")
+        .args_json(json!({ "period": u32::MAX / 2 }))
+        .transact()
+        .await?
+        .into_result();
+
+    assert!(result.has_panic("Burn period exceeds the maximum allowed"));
+    Ok(())
+}
+
+#[tokio::test]
+#[tracing::instrument]
 async fn set_burn_period_by_maintainer_succeeds() -> anyhow::Result<()> {
     let context = prepare_contract(None, None).await?;
 
