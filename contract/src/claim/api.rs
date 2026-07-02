@@ -58,10 +58,12 @@ impl ClaimApi for Contract {
         let account = account.expect("unreachable: is_available implies the account exists");
         require!(!account.is_locked, "Another operation is running");
 
-        if account.balance == 0 {
-            return PromiseOrValue::Value(ClaimResultView::new(0));
-        }
-
+        // No separate zero-balance early return: a zero balance means
+        // amount_to_burn and amount_to_claim both come out to 0 below, which
+        // already falls through to the amount_to_claim == 0 branch — routing
+        // through on_claim_result so claim_period_refreshed_at still gets
+        // refreshed (a zero-balance account must not be claimable every block
+        // with no cooldown).
         let amount_to_burn = account.get_balance_to_burn(self.burn_period, self.get_claimable_window_start());
         let amount_to_claim = account.balance - amount_to_burn;
 
