@@ -49,23 +49,24 @@ impl Contract {
             claim_period: old_state.claim_period,
             burn_period: old_state.burn_period,
             accounts: old_state.accounts,
+            accruals: old_state.accruals,
             is_service_call_running: old_state.is_service_call_running,
             balance_to_burn: old_state.balance_to_burn,
         };
 
-        // The new Contract has no `accruals`/`accounts_legacy` fields — both are
-        // dead weight since the linear-burn rewrite, long before this ACL
-        // migration. Unlike the (small, bounded) oracles admin set, `accruals`
-        // accumulated one entry per record_batch_for_hold timestamp bucket over
-        // the contract's entire pre-linear-burn operational history — it could
-        // hold far more entries than a single transaction's gas budget can
-        // iterate. Deliberately NOT calling old_state.accruals.clear() here to
-        // avoid an OOG mid-migration; a safe reclaim needs a separate, paginated
-        // cleanup path callable across multiple transactions. `accounts_legacy`
-        // has no clear()/iteration capability at all (LookupMap can't enumerate
-        // its own keys), so it's in the same "left alone" boat regardless.
-        // Both maps are simply dropped here, leaving any existing entries exactly
-        // as unreachable as they already were before this migration.
+        // `accruals` is carried through rather than cleared: unlike the (small,
+        // bounded) oracles admin set, it accumulated one entry per
+        // record_batch_for_hold timestamp bucket over the contract's entire
+        // pre-linear-burn operational history — clearing it unconditionally here
+        // risks an OOG mid-migration. It stays reachable on Contract so a future
+        // paginated cleanup method (and get_legacy_accruals_count in the
+        // meantime) can operate on it safely across multiple transactions.
+        //
+        // The new Contract has no `accounts_legacy` field, though — LookupMap has
+        // no clear()/iteration capability at all (can't enumerate its own keys),
+        // so there's no reclaim path for it regardless of size. Dropping
+        // old_state.accounts_legacy here leaves any existing entries exactly as
+        // unreachable as they already were.
 
         contract.acl_init_super_admin(env::current_account_id());
 
@@ -102,5 +103,13 @@ impl Contract {
         contract.debit_balance_to_burn(WITHDRAWN_SWEAT);
 
         contract
+    }
+
+    /// Number of entries remaining in the dead `accruals` map — nothing writes to
+    /// it anymore, so this only ever shrinks (once a cleanup method exists to
+    /// shrink it; see PROD-3671). Lets an operator size the problem and confirm
+    /// when a future paginated cleanup has finished.
+    pub fn get_legacy_accruals_count(&self) -> u32 {
+        self.accruals.len()
     }
 }
