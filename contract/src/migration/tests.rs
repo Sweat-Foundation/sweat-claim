@@ -125,23 +125,6 @@ fn unordered_set_clear_empties_a_populated_set() {
 }
 
 #[test]
-fn unordered_map_clear_empties_a_populated_map() {
-    // Validates the exact mechanism migrate() relies on to reclaim the old
-    // (now-dead) accruals map's storage.
-    init_context();
-
-    let mut map: UnorderedMap<TokensAmount, TokensAmount> = UnorderedMap::new(StorageKey::_Accruals);
-    for i in 0..20 {
-        map.insert(i, i * 2);
-    }
-    assert_eq!(20, map.len());
-
-    map.clear();
-    assert!(map.is_empty());
-    assert_eq!(0, map.iter().count());
-}
-
-#[test]
 fn migrate_calls_grant_roles_for_all_former_oracles_before_dropping_the_old_set() {
     // Regression guard for the storage-leak fix: migrate() must still visit
     // and grant every former oracle (proving the clear() added afterward

@@ -53,17 +53,19 @@ impl Contract {
             balance_to_burn: old_state.balance_to_burn,
         };
 
-        // The new Contract has no `accruals` field — it's been dead weight since
-        // the linear-burn rewrite, long before this ACL migration. Clear it so
-        // its storage doesn't leak the same way the old oracles set did.
-        old_state.accruals.clear();
-
-        // The new Contract also has no `accounts_legacy` field — same dead-weight
-        // class as accruals, and already unreachable in practice since no current
-        // code path reads AccountRecordLegacy. Unlike UnorderedSet/UnorderedMap,
-        // LookupMap has no way to enumerate or clear its own keys, so there's no
-        // equivalent cleanup possible here; dropping old_state.accounts_legacy
-        // leaves any existing entries exactly as unreachable as they already were.
+        // The new Contract has no `accruals`/`accounts_legacy` fields — both are
+        // dead weight since the linear-burn rewrite, long before this ACL
+        // migration. Unlike the (small, bounded) oracles admin set, `accruals`
+        // accumulated one entry per record_batch_for_hold timestamp bucket over
+        // the contract's entire pre-linear-burn operational history — it could
+        // hold far more entries than a single transaction's gas budget can
+        // iterate. Deliberately NOT calling old_state.accruals.clear() here to
+        // avoid an OOG mid-migration; a safe reclaim needs a separate, paginated
+        // cleanup path callable across multiple transactions. `accounts_legacy`
+        // has no clear()/iteration capability at all (LookupMap can't enumerate
+        // its own keys), so it's in the same "left alone" boat regardless.
+        // Both maps are simply dropped here, leaving any existing entries exactly
+        // as unreachable as they already were before this migration.
 
         contract.acl_init_super_admin(env::current_account_id());
 
