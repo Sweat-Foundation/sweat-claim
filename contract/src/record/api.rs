@@ -25,8 +25,14 @@ impl RecordApi for Contract {
 
             if balance_to_burn > 0 {
                 self.balance_to_burn += balance_to_burn;
-
                 account.balance -= balance_to_burn;
+            }
+
+            // Advance the evaporation window start whenever it has genuinely moved
+            // forward, even if nothing crystallized into balance_to_burn this call
+            // (e.g. the account's balance is currently 0), so a fresh top-up isn't
+            // backdated to a stale burn_since.
+            if claimable_window_start > account.burn_since {
                 account.burn_since = claimable_window_start;
             }
 
