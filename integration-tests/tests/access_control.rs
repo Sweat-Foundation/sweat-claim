@@ -2,7 +2,7 @@ use near_workspaces::types::NearToken;
 use serde_json::json;
 
 mod common;
-use common::{panic::PanicFinder, prepare::prepare_contract};
+use common::{helpers::grant_role, panic::PanicFinder, prepare::prepare_contract};
 
 const INSUFFICIENT_PERMISSIONS: &str = "Insufficient permissions";
 
@@ -247,13 +247,7 @@ async fn role_holder_without_the_right_role_is_still_rejected() -> anyhow::Resul
         .transact()
         .await?
         .into_result()?;
-    context
-        .claim
-        .call("acl_grant_role")
-        .args_json(json!({ "role": "Oracle", "account_id": oracle_only.id() }))
-        .transact()
-        .await?
-        .into_result()?;
+    grant_role(&context.claim, "Oracle", oracle_only.id()).await?;
 
     // Oracle role holder can record...
     let record_result = oracle_only

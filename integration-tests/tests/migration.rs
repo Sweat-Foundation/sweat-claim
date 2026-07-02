@@ -4,7 +4,10 @@ use anyhow::Result;
 use serde_json::json;
 
 mod common;
-use common::helpers::{balance_to_burn, fast_forward_minutes};
+use common::{
+    helpers::{balance_to_burn, fast_forward_minutes},
+    prepare::create_user,
+};
 
 /// 50,000,000 SWEAT already withdrawn outside the contract's own burn flow —
 /// `migrate()` must find at least this much in the old `balance_to_burn` and
@@ -35,12 +38,7 @@ async fn oracle_survives_migration_to_acl() -> Result<()> {
     let pre_acl_bytes = std::fs::read(pre_acl_wasm_path())?;
     let claim = worker.dev_deploy(&pre_acl_bytes).await?;
 
-    let sweat_placeholder = root
-        .create_subaccount("token")
-        .initial_balance(near_workspaces::types::NearToken::from_near(5))
-        .transact()
-        .await?
-        .into_result()?;
+    let sweat_placeholder = create_user(&root, "token").await?;
 
     claim
         .call("init")
@@ -50,12 +48,7 @@ async fn oracle_survives_migration_to_acl() -> Result<()> {
         .await?
         .into_result()?;
 
-    let oracle = root
-        .create_subaccount("oracle")
-        .initial_balance(near_workspaces::types::NearToken::from_near(5))
-        .transact()
-        .await?
-        .into_result()?;
+    let oracle = create_user(&root, "oracle").await?;
 
     claim
         .call("add_oracle")

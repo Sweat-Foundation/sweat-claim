@@ -2,7 +2,7 @@ use serde_json::json;
 
 mod common;
 use common::{
-    helpers::claimable_balance,
+    helpers::{claimable_balance, grant_role},
     panic::PanicFinder,
     prepare::{claim_wasm_bytes, prepare_contract},
 };
@@ -41,13 +41,7 @@ async fn test_upgrade_access_control() -> anyhow::Result<()> {
         .into_result();
     assert!(result.has_panic(INSUFFICIENT_PERMISSIONS));
 
-    context
-        .claim
-        .call("acl_grant_role")
-        .args_json(json!({ "role": "StagingManager", "account_id": context.alice.id() }))
-        .transact()
-        .await?
-        .into_result()?;
+    grant_role(&context.claim, "StagingManager", context.alice.id()).await?;
 
     let result = context
         .alice
@@ -97,13 +91,7 @@ async fn test_upgrade_deploy() -> anyhow::Result<()> {
     assert_ne!(0, balance_before, "there should be recorded balance before the upgrade");
 
     for role in ["StagingManager", "UpgradeManager"] {
-        context
-            .claim
-            .call("acl_grant_role")
-            .args_json(json!({ "role": role, "account_id": context.manager.id() }))
-            .transact()
-            .await?
-            .into_result()?;
+        grant_role(&context.claim, role, context.manager.id()).await?;
     }
 
     context

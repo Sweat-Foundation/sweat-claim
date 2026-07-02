@@ -5,7 +5,7 @@ use near_workspaces::{network::Sandbox, types::NearToken, Account, Contract, Wor
 use serde_json::json;
 use tracing::info;
 
-use super::helpers::{init_tracing, storage_deposit};
+use super::helpers::{grant_role, init_tracing, storage_deposit};
 
 const INITIAL_USER_BALANCE: NearToken = NearToken::from_near(10);
 const ALICE_TGE_MINT: u128 = 100_000_000;
@@ -71,19 +71,9 @@ pub async fn prepare_contract(claim_period: Option<u32>, burn_period: Option<u32
         .transact()
         .await?
         .into_result()?;
-    claim
-        .call("acl_grant_role")
-        .args_json(json!({ "role": "Oracle", "account_id": sweat.id() }))
-        .transact()
-        .await?
-        .into_result()?;
+    grant_role(&claim, "Oracle", sweat.id()).await?;
     for role in ["Oracle", "BurnManager", "Maintainer"] {
-        claim
-            .call("acl_grant_role")
-            .args_json(json!({ "role": role, "account_id": manager.id() }))
-            .transact()
-            .await?
-            .into_result()?;
+        grant_role(&claim, role, manager.id()).await?;
     }
 
     // Register the claim contract and alice for FT storage, then seed alice.
@@ -159,7 +149,7 @@ pub fn claim_wasm_bytes() -> Result<Vec<u8>> {
     read_wasm_bytes(claim_wasm_path(), "claim", CLAIM_WASM_ENV)
 }
 
-async fn create_user(root: &Account, name: &str) -> Result<Account> {
+pub(crate) async fn create_user(root: &Account, name: &str) -> Result<Account> {
     Ok(root
         .create_subaccount(name)
         .initial_balance(INITIAL_USER_BALANCE)

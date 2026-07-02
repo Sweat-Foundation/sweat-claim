@@ -1,9 +1,8 @@
-use serde_json::json;
 use tracing::info;
 
 mod common;
 use common::{
-    helpers::{claim_availability, claimable_balance, fast_forward_minutes, formula, ft_balance_of, payout},
+    helpers::{claim_availability, claimable_balance, defer_steps, fast_forward_minutes, formula, ft_balance_of, payout},
     prepare::prepare_contract,
 };
 
@@ -22,17 +21,7 @@ async fn happy_flow() -> anyhow::Result<()> {
     let (amount_for_user, _fee) = payout(target_token_amount);
 
     info!("defer_batch([(alice, {ALICE_STEPS})]) [signer=manager]");
-    context
-        .manager
-        .call(context.sweat.id(), "defer_batch")
-        .args_json(json!({
-            "steps_batch": [[context.alice.id(), ALICE_STEPS]],
-            "holding_account_id": context.claim.id(),
-        }))
-        .max_gas()
-        .transact()
-        .await?
-        .into_result()?;
+    defer_steps(&context, context.alice.id(), ALICE_STEPS).await?;
 
     let claim_contract_balance = ft_balance_of(&context.sweat, context.claim.id()).await?;
     assert_eq!(claim_contract_balance, amount_for_user);

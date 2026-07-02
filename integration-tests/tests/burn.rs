@@ -3,7 +3,7 @@ use tracing::info;
 
 mod common;
 use common::{
-    helpers::{balance_to_burn, claimable_balance, fast_forward_minutes, formula, ft_balance_of, payout},
+    helpers::{balance_to_burn, claimable_balance, defer_steps, fast_forward_minutes, formula, ft_balance_of, payout},
     prepare::prepare_contract,
 };
 
@@ -22,21 +22,6 @@ async fn burn(context: &common::prepare::Context, amount: Option<u128>) -> anyho
     Ok(burnt.parse()?)
 }
 
-async fn defer_alice(context: &common::prepare::Context, steps: u32) -> anyhow::Result<()> {
-    context
-        .manager
-        .call(context.sweat.id(), "defer_batch")
-        .args_json(json!({
-            "steps_batch": [[context.alice.id(), steps]],
-            "holding_account_id": context.claim.id(),
-        }))
-        .max_gas()
-        .transact()
-        .await?
-        .into_result()?;
-    Ok(())
-}
-
 #[tokio::test]
 #[tracing::instrument]
 async fn burn_total() -> anyhow::Result<()> {
@@ -47,7 +32,7 @@ async fn burn_total() -> anyhow::Result<()> {
     let target_token_amount = formula(&context.sweat, 0, ALICE_STEPS).await?;
     let (amount_for_user, _fee) = payout(target_token_amount);
 
-    defer_alice(&context, ALICE_STEPS).await?;
+    defer_steps(&context, context.alice.id(), ALICE_STEPS).await?;
     assert_eq!(ft_balance_of(&context.sweat, context.claim.id()).await?, amount_for_user);
 
     assert_eq!(burn(&context, None).await?, 0, "nothing to burn yet");
@@ -83,7 +68,7 @@ async fn burn_part() -> anyhow::Result<()> {
     let target_token_amount = formula(&context.sweat, 0, alice_steps).await?;
     let (amount_for_user, _fee) = payout(target_token_amount);
 
-    defer_alice(&context, alice_steps).await?;
+    defer_steps(&context, context.alice.id(), alice_steps).await?;
     assert_eq!(ft_balance_of(&context.sweat, context.claim.id()).await?, amount_for_user);
 
     assert_eq!(burn(&context, None).await?, 0, "nothing to burn yet");
