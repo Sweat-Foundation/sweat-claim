@@ -26,8 +26,8 @@ mod config;
 mod migration;
 mod record;
 
-const INITIAL_CLAIM_PERIOD_MS: u32 = 24 * 60 * 60;
-const INITIAL_BURN_PERIOD_MS: u32 = 30 * 24 * 60 * 60;
+const INITIAL_CLAIM_PERIOD_SEC: u32 = 24 * 60 * 60;
+const INITIAL_BURN_PERIOD_SEC: u32 = 30 * 24 * 60 * 60;
 
 #[derive(AccessControlRole, Copy, Clone)]
 pub enum Roles {
@@ -112,8 +112,8 @@ impl InitApi for Contract {
             accounts_legacy: LookupMap::new(StorageKey::AccountsLegacy),
             accounts: LookupMap::new(StorageKey::Accounts),
 
-            claim_period: INITIAL_CLAIM_PERIOD_MS,
-            burn_period: INITIAL_BURN_PERIOD_MS,
+            claim_period: INITIAL_CLAIM_PERIOD_SEC,
+            burn_period: INITIAL_BURN_PERIOD_SEC,
 
             is_service_call_running: false,
 
