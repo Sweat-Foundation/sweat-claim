@@ -23,7 +23,7 @@ pub(crate) fn remaining_gas() -> Gas {
 /// off-chain monitoring granularity (e.g. `clean`'s single event covering an
 /// enormous batch) — both methods are already role-gated, so this isn't
 /// protecting against an external attacker, just operational error.
-pub(crate) const MAX_BATCH_SIZE: usize = 1000;
+pub(crate) const MAX_BATCH_SIZE: usize = 150;
 
 fn ms_timestamp_to_seconds(ms: u64) -> UnixTimestamp {
     u32::try_from(ms / 1000)
