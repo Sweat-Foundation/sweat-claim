@@ -1,4 +1,5 @@
 use claim_model::{
+    account_record::AccountRecordVersioned,
     api::ClaimApi,
     event::{emit, ClaimData, EventKind},
     ClaimAvailabilityView, ClaimResultView, ClaimableBalanceView, TokensAmount, UnixTimestamp, UnixTimestampExtension,
@@ -49,10 +50,9 @@ impl ClaimApi for Contract {
         // Single read covering the availability, lock, and balance checks below —
         // duplicates is_claim_available's logic instead of calling it, to avoid a
         // second lookup of the same account on this hot path.
-        let account = self.accounts.get(&account_id).map(|account| account.into_latest());
+        let account = self.accounts.get(&account_id).map(AccountRecordVersioned::into_latest);
         let is_available = account
-            .map(|account| !account.claim_period_refreshed_at.is_within_period(now, self.claim_period))
-            .unwrap_or(false);
+            .is_some_and(|account| !account.claim_period_refreshed_at.is_within_period(now, self.claim_period));
         require!(is_available, "Claim is not available at the moment");
 
         let account = account.expect("unreachable: is_available implies the account exists");
