@@ -89,8 +89,8 @@ application.
 
 -------------------------------------
 
-1. As a server I want to impose a 48 hour count down time (offchain) which prevents the "Claim" button from being
-   active. After the 48 hours have matured, the Claim button should be shown as active such that a user may interact
+1. As a server I want to impose a 24 hour count down time (offchain) which prevents the "Claim" button from being
+   active. After the 24 hours have matured, the Claim button should be shown as active such that a user may interact
    with it.
 2. As a server I want to inform a user based on internally stored thresholds, when $SWEAT that has accrued has not been
    claimed after _x_ days and/or _y_ amount. This may be accomplished by push notifications in-app.
@@ -108,7 +108,7 @@ application.
 -------------------------------------
 
 1. As a user I want to view my accrued $SWEAT in-app
-2. As a user I want to see a progress bar showing how much time is remaining (of the 48 hours) before I can access the
+2. As a user I want to see a progress bar showing how much time is remaining (of the 24 hours) before I can access the
    Claim button.
 3. As a user I want to view claimed $SWEAT in my Available Balance as soon as a successful claim has been initiated.
 4. As a user, after claiming, I want to see the countdown timer and associated progress bar reset.
