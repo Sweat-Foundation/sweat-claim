@@ -103,3 +103,41 @@ fn reset_service_call_flag_not_by_maintainer() {
     context.switch_account(&accounts.alice);
     contract.reset_service_call_flag();
 }
+
+#[test]
+fn set_account_enabled_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    let alice_id = accounts.alice;
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))]);
+
+    contract.set_account_enabled(alice_id.clone(), false);
+    assert!(!contract.accounts.get_account(&alice_id).is_enabled);
+
+    contract.set_account_enabled(alice_id.clone(), true);
+    assert!(contract.accounts.get_account(&alice_id).is_enabled);
+}
+
+#[test]
+#[should_panic(expected = "Account not found")]
+fn set_account_enabled_for_not_existing_account_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    let alice_id = accounts.alice;
+
+    context.switch_account(&accounts.oracle);
+    contract.set_account_enabled(alice_id, false);
+}
+
+#[test]
+#[should_panic(expected = "Insufficient permissions")]
+fn set_account_enabled_not_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    let alice_id = accounts.alice;
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))]);
+
+    context.switch_account(&alice_id);
+    contract.set_account_enabled(alice_id.clone(), false);
+}
