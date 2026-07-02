@@ -1,8 +1,9 @@
 use claim_model::{
-    account_record::AccountRecordVersioned,
+    account_record::{AccountRecord, AccountRecordVersioned},
     api::ClaimApi,
     event::{emit, ClaimData, EventKind},
-    ClaimAvailabilityView, ClaimResultView, ClaimableBalanceView, TokensAmount, UnixTimestamp, UnixTimestampExtension,
+    ClaimAvailabilityView, ClaimResultView, ClaimableBalanceView, Duration, TokensAmount, UnixTimestamp,
+    UnixTimestampExtension,
 };
 use near_sdk::{env, json_types::U128, near_bindgen, require, AccountId, PromiseOrValue};
 
@@ -29,18 +30,8 @@ impl ClaimApi for Contract {
     }
 
     fn is_claim_available(&self, account_id: AccountId) -> ClaimAvailabilityView {
-        if let Some(account) = self.accounts.get(&account_id) {
-            let account = account.into_latest();
-            let claim_period_refreshed_at = account.claim_period_refreshed_at;
-
-            return if claim_period_refreshed_at.is_within_period(now_seconds(), self.claim_period) {
-                ClaimAvailabilityView::Unavailable((claim_period_refreshed_at, self.claim_period))
-            } else {
-                ClaimAvailabilityView::Available(0)
-            };
-        }
-
-        ClaimAvailabilityView::Unregistered
+        let account = self.accounts.get(&account_id).map(AccountRecordVersioned::into_latest);
+        Self::claim_availability(account, now_seconds(), self.claim_period)
     }
 
     fn claim(&mut self) -> PromiseOrValue<ClaimResultView> {
@@ -48,14 +39,16 @@ impl ClaimApi for Contract {
         let now = now_seconds();
 
         // Single read covering the availability, lock, and balance checks below —
-        // duplicates is_claim_available's logic instead of calling it, to avoid a
-        // second lookup of the same account on this hot path.
+        // reuses is_claim_available's core logic instead of calling the trait
+        // method, to avoid a second lookup of the same account on this hot path.
         let account = self.accounts.get(&account_id).map(AccountRecordVersioned::into_latest);
-        let is_available = account
-            .is_some_and(|account| !account.claim_period_refreshed_at.is_within_period(now, self.claim_period));
-        require!(is_available, "Claim is not available at the moment");
+        let availability = Self::claim_availability(account, now, self.claim_period);
+        require!(
+            matches!(availability, ClaimAvailabilityView::Available(_)),
+            "Claim is not available at the moment"
+        );
 
-        let account = account.expect("unreachable: is_available implies the account exists");
+        let account = account.expect("unreachable: Available implies the account exists");
         require!(!account.is_locked, "Another operation is running");
         require!(account.is_enabled, "Account is disabled");
 
@@ -81,6 +74,28 @@ impl ClaimApi for Contract {
 }
 
 impl Contract {
+    /// Shared by `is_claim_available` and `claim()`: an account can claim once
+    /// `claim_period` has elapsed since `claim_period_refreshed_at`. Takes an
+    /// already-fetched account (or `None` for an unregistered one) rather than
+    /// an `AccountId`, so `claim()` can reuse its own single lookup instead of
+    /// looking the account up a second time via the trait method.
+    fn claim_availability(
+        account: Option<&AccountRecord>,
+        now: UnixTimestamp,
+        claim_period: Duration,
+    ) -> ClaimAvailabilityView {
+        let Some(account) = account else {
+            return ClaimAvailabilityView::Unregistered;
+        };
+
+        let claim_period_refreshed_at = account.claim_period_refreshed_at;
+        if claim_period_refreshed_at.is_within_period(now, claim_period) {
+            ClaimAvailabilityView::Unavailable((claim_period_refreshed_at, claim_period))
+        } else {
+            ClaimAvailabilityView::Available(0)
+        }
+    }
+
     fn on_claim_result(
         &mut self,
         now: UnixTimestamp,
