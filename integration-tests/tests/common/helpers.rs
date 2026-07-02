@@ -3,6 +3,8 @@ use near_workspaces::{network::Sandbox, types::NearToken, AccountId, Contract, W
 use serde_json::{json, Value};
 use tracing_subscriber::EnvFilter;
 
+use super::prepare::Context;
+
 /// nitka used 240 sandbox blocks per simulated minute; keep the same ratio so the
 /// time-based claim/burn windows behave as they did under the old harness.
 const BLOCKS_PER_MINUTE: u64 = 240;
@@ -71,6 +73,37 @@ pub async fn claim_availability(claim: &Contract, account_id: &AccountId) -> Res
 pub async fn balance_to_burn(claim: &Contract) -> Result<u128> {
     let balance: String = claim.view("get_balance_to_burn").await?.json()?;
     Ok(balance.parse()?)
+}
+
+/// Defers `steps` for `account_id` on the SWEAT token, crediting the claim
+/// contract as the holding account — the same mechanism real steps go through
+/// on their way to becoming a claimable balance. Signed by `context.manager`,
+/// SWEAT's oracle.
+pub async fn defer_steps(context: &Context, account_id: &AccountId, steps: u32) -> Result<()> {
+    context
+        .manager
+        .call(context.sweat.id(), "defer_batch")
+        .args_json(json!({
+            "steps_batch": [[account_id, steps]],
+            "holding_account_id": context.claim.id(),
+        }))
+        .max_gas()
+        .transact()
+        .await?
+        .into_result()?;
+    Ok(())
+}
+
+/// Grants `role` to `account_id` on the claim contract. Must be signed by the
+/// claim contract's own account, since it made itself super-admin in `init`.
+pub async fn grant_role(claim: &Contract, role: &str, account_id: &AccountId) -> Result<()> {
+    claim
+        .call("acl_grant_role")
+        .args_json(json!({ "role": role, "account_id": account_id }))
+        .transact()
+        .await?
+        .into_result()?;
+    Ok(())
 }
 
 /// Registers `account_id` for storage on the SWEAT token (NEP-145).

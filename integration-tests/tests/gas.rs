@@ -4,34 +4,19 @@ use tracing::info;
 
 mod common;
 use common::{
-    helpers::{claim_availability, fast_forward_minutes},
+    helpers::{claim_availability, defer_steps, fast_forward_minutes},
     panic::PanicFinder,
     prepare::prepare_contract,
 };
 
 const ALICE_STEPS: u32 = 10_000;
 
-async fn defer_alice(context: &common::prepare::Context, steps: u32) -> anyhow::Result<()> {
-    context
-        .manager
-        .call(context.sweat.id(), "defer_batch")
-        .args_json(json!({
-            "steps_batch": [[context.alice.id(), steps]],
-            "holding_account_id": context.claim.id(),
-        }))
-        .max_gas()
-        .transact()
-        .await?
-        .into_result()?;
-    Ok(())
-}
-
 #[tokio::test]
 #[tracing::instrument]
 async fn insufficient_gas_on_claim() -> anyhow::Result<()> {
     let context = prepare_contract(Some(0), Some(60 * 60)).await?;
 
-    defer_alice(&context, ALICE_STEPS).await?;
+    defer_steps(&context, context.alice.id(), ALICE_STEPS).await?;
 
     let availability = claim_availability(&context.claim, context.alice.id()).await?;
     assert_eq!(availability["type"], "available");
@@ -55,7 +40,7 @@ async fn insufficient_gas_on_claim() -> anyhow::Result<()> {
 async fn insufficient_gas_on_burn() -> anyhow::Result<()> {
     let context = prepare_contract(Some(0), Some(1)).await?;
 
-    defer_alice(&context, ALICE_STEPS).await?;
+    defer_steps(&context, context.alice.id(), ALICE_STEPS).await?;
 
     fast_forward_minutes(&context.worker, 1).await?;
 
