@@ -2,7 +2,7 @@
   "schema_version": "0.4.0",
   "metadata": {
     "name": "sweat_claim",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "authors": [
       "Sweat Economy"
     ],
@@ -10,7 +10,7 @@
       "compiler": "rustc 1.86.0",
       "builder": "cargo-near cargo-near-build 0.11.3"
     },
-    "wasm_hash": "B6jxmr2eYBU3gR5sgB139UCdfNuw3NVrM6yxHsDK1gvc"
+    "wasm_hash": "CgxZeTA3rgEmXNrYXRXRcX4zqr7NF3dC3GjLHGTvuW1p"
   },
   "body": {
     "functions": [

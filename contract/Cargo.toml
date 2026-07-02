@@ -1,6 +1,6 @@
 [package]
 name = "sweat_claim"
-version = "2.1.0"
+version = "2.1.1"
 authors = ["Sweat Economy"]
 edition = "2021"
 repository = "https://github.com/sweatco/sweat-claim"
