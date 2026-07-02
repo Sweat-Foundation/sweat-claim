@@ -130,8 +130,6 @@ mod prod {
 
     #[ext_contract(ext_self)]
     pub trait SelfCallback {
-        // Invoked via the near_bindgen-generated wasm export; appears unused on the host build.
-        #[allow(dead_code)]
         fn on_transfer(
             &mut self,
             now: UnixTimestamp,

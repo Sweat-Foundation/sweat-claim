@@ -84,8 +84,6 @@ pub(crate) mod prod {
 
     #[ext_contract(ext_self)]
     pub trait SelfCallback {
-        // Invoked via the near_bindgen-generated wasm export; appears unused on the host build.
-        #[allow(dead_code)]
         fn on_burn(&mut self, amount_to_burn: TokensAmount) -> U128;
     }
 
