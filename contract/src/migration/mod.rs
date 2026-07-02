@@ -42,7 +42,7 @@ impl Contract {
         staging_managers: Vec<AccountId>,
         upgrade_managers: Vec<AccountId>,
     ) -> Self {
-        let old_state: OldState = env::state_read().expect("Failed to read old state");
+        let mut old_state: OldState = env::state_read().expect("Failed to read old state");
 
         let mut contract = Self {
             token_account_id: old_state.token_account_id,
@@ -66,6 +66,10 @@ impl Contract {
         for oracle in old_state.oracles.iter() {
             acl.grant_role_unchecked(Roles::Oracle, oracle);
         }
+        // The new Contract has no `oracles` field, so this set's storage would
+        // otherwise be permanently orphaned once this state blob is overwritten.
+        old_state.oracles.clear();
+
         for account in &burn_managers {
             acl.grant_role_unchecked(Roles::BurnManager, account);
         }
