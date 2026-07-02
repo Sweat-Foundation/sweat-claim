@@ -15,8 +15,9 @@ impl CleanApi for Contract {
     #[access_control_any(roles(Roles::Maintainer))]
     fn clean(&mut self, account_ids: Vec<AccountId>) {
         for account_id in account_ids.clone() {
-            if let Some(account) = self.accounts.get(&account_id) {
-                self.balance_to_burn += account.into_latest().balance;
+            let balance = self.accounts.get(&account_id).map(|account| account.into_latest().balance);
+            if let Some(balance) = balance {
+                self.credit_balance_to_burn(balance);
             }
             self.accounts.set(account_id, None);
         }

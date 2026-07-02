@@ -83,7 +83,7 @@ impl Contract {
             contract.balance_to_burn >= WITHDRAWN_SWEAT,
             "balance_to_burn is less than the 50M SWEAT already withdrawn"
         );
-        contract.balance_to_burn -= WITHDRAWN_SWEAT;
+        contract.debit_balance_to_burn(WITHDRAWN_SWEAT);
 
         contract
     }

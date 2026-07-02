@@ -24,7 +24,6 @@ impl RecordApi for Contract {
             let balance_to_burn = account.get_balance_to_burn(self.burn_period, claimable_window_start);
 
             if balance_to_burn > 0 {
-                self.balance_to_burn += balance_to_burn;
                 account.balance -= balance_to_burn;
             }
 
@@ -37,6 +36,10 @@ impl RecordApi for Contract {
             }
 
             account.balance += amount.0;
+
+            if balance_to_burn > 0 {
+                self.credit_balance_to_burn(balance_to_burn);
+            }
 
             event_data.amounts.push((
                 account_id.clone(),

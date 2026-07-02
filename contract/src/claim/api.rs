@@ -92,12 +92,12 @@ impl Contract {
             return ClaimResultView::new(0);
         }
 
-        // `balance_to_burn` is updated here because parallel `burn` call can modify this value.
-        // In this case rolling back a user state to a previous state can lead to inconsistency.
-        self.balance_to_burn += amount_to_burn;
-
         account.claim_period_refreshed_at = now;
         account.burn_since = now;
+
+        // `balance_to_burn` is updated here because parallel `burn` call can modify this value.
+        // In this case rolling back a user state to a previous state can lead to inconsistency.
+        self.credit_balance_to_burn(amount_to_burn);
 
         let event_data = ClaimData {
             account_id,
