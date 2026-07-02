@@ -5,8 +5,12 @@ use tracing_subscriber::EnvFilter;
 
 use super::prepare::Context;
 
-/// nitka used 240 sandbox blocks per simulated minute; keep the same ratio so the
-/// time-based claim/burn windows behave as they did under the old harness.
+/// `Worker::fast_forward` (near-workspaces) advances the sandbox by a block-height
+/// delta, not a real-time duration — per its rustdoc, it forwards the chain's
+/// time-related state (block height, timestamp, epoch), not wall-clock time
+/// directly. This ratio is an empirical calibration for this sandbox so
+/// `fast_forward_minutes` advances on-chain time by roughly the requested number
+/// of minutes.
 const BLOCKS_PER_MINUTE: u64 = 240;
 
 pub fn init_tracing() {
