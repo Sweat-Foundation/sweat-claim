@@ -1,6 +1,6 @@
 use claim_model::{
     account_record::{AccountRecord, AccountRecordVersioned},
-    UnixTimestamp,
+    TokensAmount, UnixTimestamp,
 };
 use near_sdk::{
     env,
@@ -76,5 +76,19 @@ impl Contract {
     pub(crate) fn get_claimable_window_start(&self) -> UnixTimestamp {
         // Can be 0 only in tests.
         now_seconds().saturating_sub(self.burn_period)
+    }
+
+    /// Adds `amount` to `balance_to_burn`. Callers are responsible for any
+    /// amount validation specific to their call site.
+    pub(crate) fn credit_balance_to_burn(&mut self, amount: TokensAmount) {
+        self.balance_to_burn += amount;
+    }
+
+    /// Subtracts `amount` from `balance_to_burn`, clamping to 0 rather than
+    /// underflowing. Callers should still validate `amount <= balance_to_burn`
+    /// beforehand with a message specific to their call site; this is a
+    /// defensive floor for the shared invariant, not a substitute for that.
+    pub(crate) fn debit_balance_to_burn(&mut self, amount: TokensAmount) {
+        self.balance_to_burn = self.balance_to_burn.saturating_sub(amount);
     }
 }

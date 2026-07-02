@@ -26,7 +26,7 @@ impl BurnApi for Contract {
 
         if amount_to_burn > 0 {
             self.is_service_call_running = true;
-            self.balance_to_burn -= amount_to_burn;
+            self.debit_balance_to_burn(amount_to_burn);
 
             self.burn_external(amount_to_burn)
         } else {
@@ -62,7 +62,7 @@ impl Contract {
         } else {
             // If burning failed, return the amount back to the balance.
             // Another `claim` call can increase `balance_to_burn`, so it can be non-zero at this point.
-            self.balance_to_burn += amount_to_burn;
+            self.credit_balance_to_burn(amount_to_burn);
 
             U128(0)
         }
