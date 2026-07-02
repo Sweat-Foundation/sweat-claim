@@ -88,7 +88,7 @@ impl Contract {
         account.is_locked = false;
 
         if !is_success {
-            account.balance = amount_to_claim + amount_to_burn;
+            account.balance += amount_to_claim + amount_to_burn;
             return ClaimResultView::new(0);
         }
 
@@ -184,10 +184,16 @@ mod prod {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use claim_model::{ClaimResultView, TokensAmount, UnixTimestamp};
-    use near_sdk::{AccountId, PromiseOrValue};
+    use claim_model::{api::RecordApi, ClaimResultView, TokensAmount, UnixTimestamp};
+    use near_sdk::{json_types::U128, AccountId, PromiseOrValue};
 
-    use crate::{common::tests::data::get_test_future_success, Contract};
+    use crate::{
+        common::{
+            tests::{data::get_test_future_success, Context},
+            AccountAccessor,
+        },
+        Contract,
+    };
 
     pub(crate) const EXT_TRANSFER_FUTURE: &str = "ext_transfer";
 
@@ -207,5 +213,32 @@ pub(crate) mod test {
                 get_test_future_success(EXT_TRANSFER_FUTURE),
             ))
         }
+    }
+
+    #[test]
+    fn on_claim_result_failure_does_not_discard_balance_recorded_during_flight() {
+        let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+        context.switch_account(&accounts.oracle);
+        contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(1_000))]);
+
+        // Simulate `claim()` having zeroed the balance and locked the account
+        // while its transfer promise is in flight.
+        let account = contract.accounts.get_or_insert_account_mut(&accounts.alice);
+        account.balance = 0;
+        account.is_locked = true;
+
+        // Oracle credits the account mid-flight; record_batch_for_hold doesn't check is_locked.
+        contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(500))]);
+
+        // The in-flight transfer then fails.
+        let result = contract.on_claim_result(0, accounts.alice.clone(), 1_000, 0, false);
+        assert_eq!(0, result.total.0);
+
+        let balance = contract.accounts.get_account(&accounts.alice).balance;
+        assert_eq!(
+            1_500, balance,
+            "balance recorded while claim was in flight must not be discarded"
+        );
     }
 }
