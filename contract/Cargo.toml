@@ -28,20 +28,17 @@ rand = "0.8.5"
 # on-chain contract, by external tools like SourceScan or near-verify-rs.
 [package.metadata.near.reproducible_build]
 # docker image, descriptor of build environment
-image = "sourcescan/cargo-near:0.21.1-rust-1.93.0"
+image = "sourcescan/cargo-near:0.20.3-rust-1.86.0"
 # tag after colon above serves only descriptive purpose; image is identified by digest
-image_digest = "sha256:79b789c81ba19ec30794a6b1046b02dcaf5c055994b22cc7c9af67ab5096b095"
+image_digest = "sha256:a84b7c401a856b6bbbe1975f235b6a8011540a24dfbde248531cccb4b2fdbadf"
 # list of environment variable names whose values, if set, are used as external
 # build parameters in a reproducible manner
 passed_env = []
 # build command run inside the docker container.
-# `--no-abi` is required because the forked near-sdk 4.x predates cargo-near's
-# ABI generation (contract types don't implement `JsonSchema`).
 container_build_command = [
     "cargo",
     "near",
     "build",
     "non-reproducible-wasm",
     "--locked",
-    "--no-abi",
 ]

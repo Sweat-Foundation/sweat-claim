@@ -193,7 +193,12 @@ mod prod {
             .to_vec();
 
             Promise::new(self.token_account_id.clone())
-                .function_call("ft_transfer".to_string(), args, NearToken::from_yoctonear(1), GAS_FOR_TRANSFER)
+                .function_call(
+                    "ft_transfer".to_string(),
+                    args,
+                    NearToken::from_yoctonear(1),
+                    GAS_FOR_TRANSFER,
+                )
                 .then(callback)
                 .into()
         }

@@ -12,7 +12,7 @@ members = ["contract", "model"]
 [workspace.dependencies]
 claim-model = { path = "model" }
 
-near-sdk = "5.28"
+near-sdk = "=5.26.1"
 
 # Optimized release profile for the contract wasm.
 # `cargo near build` builds with `--release` by default and picks this up, so no

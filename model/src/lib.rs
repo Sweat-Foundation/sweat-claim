@@ -1,7 +1,4 @@
-use near_sdk::{
-    json_types::U128,
-    serde::{Deserialize, Serialize},
-};
+use near_sdk::{json_types::U128, near};
 
 pub mod account_record;
 pub mod api;
@@ -12,8 +9,8 @@ pub type AccrualIndex = u32;
 pub type TokensAmount = u128;
 pub type Duration = u32; // Period in seconds
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-#[serde(crate = "near_sdk::serde")]
+#[near(serializers = [json])]
+#[derive(Debug, PartialEq)]
 #[serde(untagged)]
 pub enum ClaimableBalanceView {
     Short(U128),
@@ -40,8 +37,9 @@ impl ClaimableBalanceView {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-#[serde(crate = "near_sdk::serde", tag = "type", content = "data", rename_all = "snake_case")]
+#[near(serializers = [json])]
+#[derive(Debug, PartialEq)]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
 pub enum ClaimAvailabilityView {
     /// Claim is available. Wrapped number is the amount of claimable entries.
     Available(u16),
@@ -52,8 +50,8 @@ pub enum ClaimAvailabilityView {
     Unregistered,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-#[serde(crate = "near_sdk::serde")]
+#[near(serializers = [json])]
+#[derive(Debug, PartialEq)]
 pub struct ClaimResultView {
     pub total: U128,
 }
@@ -64,8 +62,8 @@ impl ClaimResultView {
     }
 }
 
-#[derive(Serialize, Debug, PartialEq)]
-#[serde(crate = "near_sdk::serde")]
+#[near(serializers = [json])]
+#[derive(Debug, PartialEq)]
 pub struct BurnStatus {
     pub min_claimable_ts: Option<UnixTimestamp>,
     pub claim_period_refreshed_at: UnixTimestamp,
