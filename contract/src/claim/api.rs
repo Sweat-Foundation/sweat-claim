@@ -44,16 +44,18 @@ impl ClaimApi for Contract {
 
     fn claim(&mut self) -> PromiseOrValue<ClaimResultView> {
         let account_id = env::predecessor_account_id();
+        let now = now_seconds();
 
-        require!(
-            matches!(
-                self.is_claim_available(account_id.clone()),
-                ClaimAvailabilityView::Available(_)
-            ),
-            "Claim is not available at the moment"
-        );
+        // Single read covering the availability, lock, and balance checks below —
+        // duplicates is_claim_available's logic instead of calling it, to avoid a
+        // second lookup of the same account on this hot path.
+        let account = self.accounts.get(&account_id).map(|account| account.into_latest());
+        let is_available = account
+            .map(|account| !account.claim_period_refreshed_at.is_within_period(now, self.claim_period))
+            .unwrap_or(false);
+        require!(is_available, "Claim is not available at the moment");
 
-        let account = self.accounts.get_account(&account_id);
+        let account = account.expect("unreachable: is_available implies the account exists");
         require!(!account.is_locked, "Another operation is running");
 
         if account.balance == 0 {
@@ -63,15 +65,15 @@ impl ClaimApi for Contract {
         let amount_to_burn = account.get_balance_to_burn(self.burn_period, self.get_claimable_window_start());
         let amount_to_claim = account.balance - amount_to_burn;
 
-        let account = self.accounts.get_or_insert_account_mut(&account_id);
+        let account = self.accounts.get_account_mut(&account_id);
         account.balance = 0;
 
         if amount_to_claim == 0 {
-            return PromiseOrValue::Value(self.on_claim_result(now_seconds(), account_id, 0, amount_to_burn, true));
+            return PromiseOrValue::Value(self.on_claim_result(now, account_id, 0, amount_to_burn, true));
         }
 
         account.is_locked = true;
-        self.transfer_external(now_seconds(), account_id, amount_to_claim, amount_to_burn)
+        self.transfer_external(now, account_id, amount_to_claim, amount_to_burn)
     }
 }
 
