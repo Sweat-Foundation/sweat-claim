@@ -6,7 +6,7 @@ use claim_model::{
 };
 use near_sdk::json_types::U128;
 
-use crate::common::{tests::Context, AccountAccessor};
+use crate::common::{tests::Context, AccountAccessor, MAX_BATCH_SIZE};
 
 #[test]
 fn record_by_oracle() {
@@ -78,4 +78,16 @@ fn record_batch_for_hold_advances_burn_since_even_when_nothing_crystallizes() {
         expected_burn_since, actual_burn_since,
         "burn_since must advance to claimable_window_start even when balance_to_burn is 0"
     );
+}
+
+#[test]
+#[should_panic(expected = "Batch size exceeds the maximum allowed")]
+fn record_batch_for_hold_rejects_a_batch_over_the_max_size() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    context.switch_account(&accounts.oracle);
+
+    let amounts: Vec<_> = (0..=MAX_BATCH_SIZE)
+        .map(|i| (format!("account{i}").parse().unwrap(), U128(1)))
+        .collect();
+    contract.record_batch_for_hold(amounts);
 }

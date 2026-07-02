@@ -18,6 +18,13 @@ pub(crate) fn remaining_gas() -> Gas {
     env::prepaid_gas().saturating_sub(env::used_gas())
 }
 
+/// Upper bound on batch-shaped inputs (`record_batch_for_hold`, `clean`).
+/// Defense-in-depth against an oversized batch OOG-ing mid-call or degrading
+/// off-chain monitoring granularity (e.g. `clean`'s single event covering an
+/// enormous batch) — both methods are already role-gated, so this isn't
+/// protecting against an external attacker, just operational error.
+pub(crate) const MAX_BATCH_SIZE: usize = 1000;
+
 fn ms_timestamp_to_seconds(ms: u64) -> UnixTimestamp {
     u32::try_from(ms / 1000)
         .unwrap_or_else(|err| panic_str(&format!("Failed to get convert milliseconds to Unix timestamp: {err}")))
