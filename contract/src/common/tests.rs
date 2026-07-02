@@ -263,6 +263,22 @@ mod account_record_tests {
         let balance_to_burn = account.get_balance_to_burn(burn_period, claimable_window_start);
         assert_eq!(account.balance, balance_to_burn);
     }
+
+    #[test]
+    fn test_balance_to_burn_does_not_underflow_when_burn_period_is_raised_after_burn_since_advanced() {
+        // burn_since was advanced to 800 while burn_period was 200 (claimable_window_start
+        // = 1000 - 200 at the time). Raising burn_period to 300 afterwards makes the new
+        // claimable_window_start (1050 - 300 = 750) smaller than the account's burn_since,
+        // which must not panic on the `claimable_window_start - burn_since` subtraction.
+        let mut account = AccountRecord::new(0);
+        account.claim_period_refreshed_at = 500;
+        account.burn_since = 800;
+        account.balance = 1_000;
+
+        let claimable_window_start = 750;
+        let balance_to_burn = account.get_balance_to_burn(300, claimable_window_start);
+        assert_eq!(0, balance_to_burn);
+    }
 }
 
 #[cfg(test)]
