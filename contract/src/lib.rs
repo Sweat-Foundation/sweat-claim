@@ -21,7 +21,6 @@ mod claim;
 mod clean;
 mod common;
 mod config;
-mod migration;
 mod record;
 
 const INITIAL_CLAIM_PERIOD_SEC: u32 = 24 * 60 * 60;
@@ -71,11 +70,10 @@ pub struct Contract {
     accounts: LookupMap<AccountId, AccountRecordVersioned>,
 
     /// Dead weight since the linear-burn rewrite — nothing reads or writes entries
-    /// here anymore. Kept on the struct (rather than dropped during the ACL
-    /// migration) solely so its storage can eventually be reclaimed via a
-    /// paginated cleanup method; an unconditional clear risks running out of gas
-    /// on a deployment with substantial pre-linear-burn history. See
-    /// `get_legacy_accruals_count` and `migration/mod.rs`.
+    /// here anymore. Kept on the struct solely so its storage can eventually be
+    /// reclaimed via a paginated cleanup method; an unconditional clear risks
+    /// running out of gas on a deployment with substantial pre-linear-burn
+    /// history. See `get_legacy_accruals_count`.
     accruals: UnorderedMap<UnixTimestamp, (Vector<TokensAmount>, TokensAmount)>,
 
     /// Indicates whether a service call is currently in progress.
@@ -95,7 +93,8 @@ enum StorageKey {
     // Borsh discriminant (its storage-prefix byte), silently orphaning all stored
     // balances. `accounts_legacy` was dropped from Contract entirely (LookupMap
     // can't enumerate its own keys, so there's no cleanup path for it regardless);
-    // `_AccountsLegacy` is only referenced by migration/tests.rs now.
+    // these `_...Legacy` variants are unused placeholders kept only to hold their
+    // discriminant slots.
     _AccountsLegacy,
     Accruals,
     _AccrualsEntryLegacy(u32),
@@ -126,5 +125,16 @@ impl InitApi for Contract {
         contract.acl_init_super_admin(env::current_account_id());
 
         contract
+    }
+}
+
+#[near_bindgen]
+impl Contract {
+    /// Number of entries remaining in the dead `accruals` map — nothing writes to
+    /// it anymore, so this only ever shrinks (once a cleanup method exists to
+    /// shrink it; see PROD-3671). Lets an operator size the problem and confirm
+    /// when a future paginated cleanup has finished.
+    pub fn get_legacy_accruals_count(&self) -> u32 {
+        self.accruals.len()
     }
 }
