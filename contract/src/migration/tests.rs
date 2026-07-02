@@ -43,7 +43,7 @@ fn write_old_state_with_oracles(balance_to_burn: TokensAmount, oracles: Vec<Acco
         oracles: oracles_set,
         claim_period: 1,
         burn_period: 2,
-        accruals: UnorderedMap::new(StorageKey::Accruals),
+        accruals: UnorderedMap::new(StorageKey::_Accruals),
         accounts_legacy: LookupMap::new(StorageKey::AccountsLegacy),
         accounts: LookupMap::new(StorageKey::Accounts),
         is_service_call_running: false,
@@ -122,6 +122,23 @@ fn unordered_set_clear_empties_a_populated_set() {
     set.clear();
     assert!(set.is_empty());
     assert_eq!(0, set.iter().count());
+}
+
+#[test]
+fn unordered_map_clear_empties_a_populated_map() {
+    // Validates the exact mechanism migrate() relies on to reclaim the old
+    // (now-dead) accruals map's storage.
+    init_context();
+
+    let mut map: UnorderedMap<TokensAmount, TokensAmount> = UnorderedMap::new(StorageKey::_Accruals);
+    for i in 0..20 {
+        map.insert(i, i * 2);
+    }
+    assert_eq!(20, map.len());
+
+    map.clear();
+    assert!(map.is_empty());
+    assert_eq!(0, map.iter().count());
 }
 
 #[test]

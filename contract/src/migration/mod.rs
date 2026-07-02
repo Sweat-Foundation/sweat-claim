@@ -48,12 +48,16 @@ impl Contract {
             token_account_id: old_state.token_account_id,
             claim_period: old_state.claim_period,
             burn_period: old_state.burn_period,
-            accruals: old_state.accruals,
             accounts_legacy: old_state.accounts_legacy,
             accounts: old_state.accounts,
             is_service_call_running: old_state.is_service_call_running,
             balance_to_burn: old_state.balance_to_burn,
         };
+
+        // The new Contract has no `accruals` field — it's been dead weight since
+        // the linear-burn rewrite, long before this ACL migration. Clear it so
+        // its storage doesn't leak the same way the old oracles set did.
+        old_state.accruals.clear();
 
         contract.acl_init_super_admin(env::current_account_id());
 

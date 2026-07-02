@@ -7,13 +7,13 @@
 use claim_model::{
     account_record::{AccountRecordLegacy, AccountRecordVersioned},
     api::InitApi,
-    Duration, TokensAmount, UnixTimestamp,
+    Duration, TokensAmount,
 };
 use near_plugins::{access_control, AccessControlRole, AccessControllable, Upgradable};
 use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
     env, near, near_bindgen,
-    store::{LookupMap, UnorderedMap, Vector},
+    store::LookupMap,
     AccountId, BorshStorageKey, PanicOnDefault,
 };
 
@@ -70,32 +70,8 @@ pub struct Contract {
     /// are considered for burning, helping in regulating the token supply.
     burn_period: Duration,
 
-    /// A ledger storing the timestamps of recordings and the corresponding user accruals.
-    ///
-    /// `accruals` does not contain account IDs directly but correlates with `AccountRecord`
-    /// entries in the `accounts` field. It is essential for tracking token accruals over time.
-    /// `AccountRecord` entries in `accounts` map contain pairs of a timestamp pointing to exact
-    /// entry in `accruals` and index of particular accrual in corresponding vector.
-    ///
-    /// Here is an illustration of the connection:
-    /// ```text
-    ///        Contract.accruals:
-    ///        ...
-    ///        1705066289: ([0.1, 2.3, 5.3, 2.0, 4.3], 14)
-    ///  ┌───> 1705066501: ([1.2, 3.4, 8.7, 9.6], 22.9)
-    ///  │     ...                      ↑
-    ///  │                              │
-    ///  │     AccountRecord.accruals:  │
-    ///  │     [(1705066501, 2)]        │
-    ///  └────────────┘      └──────────┘
-    /// ```
-    accruals: UnorderedMap<UnixTimestamp, (Vector<TokensAmount>, TokensAmount)>,
-
-    /// A map containing accrual and service details for each user account.
-    ///
-    /// `accounts` holds individual records for users, detailing their accrued tokens and
-    /// related service information. It works in conjunction with `accruals` to provide a
-    /// comprehensive view of each user's token status.
+    /// Kept only so pre-linear-burn on-chain state still deserializes correctly;
+    /// no current code path reads or writes it.
     accounts_legacy: LookupMap<AccountId, AccountRecordLegacy>,
 
     accounts: LookupMap<AccountId, AccountRecordVersioned>,
@@ -114,10 +90,12 @@ pub struct Contract {
 #[borsh(crate = "near_sdk::borsh")]
 enum StorageKey {
     AccountsLegacy,
-    Accruals,
+    // Renamed, not removed: deleting any of these variants would shift `Accounts`'s
+    // Borsh discriminant (its storage-prefix byte), silently orphaning all stored
+    // balances. Only referenced by migration/tests.rs now that Contract itself has
+    // dropped the `accruals` field.
+    _Accruals,
     _AccrualsEntryLegacy(u32),
-    // Renamed, not removed: deleting this variant would shift `Accounts`'s Borsh
-    // discriminant (its storage-prefix byte), silently orphaning all stored balances.
     _OraclesLegacy,
     Accounts,
 }
@@ -133,7 +111,6 @@ impl InitApi for Contract {
 
             accounts_legacy: LookupMap::new(StorageKey::AccountsLegacy),
             accounts: LookupMap::new(StorageKey::Accounts),
-            accruals: UnorderedMap::new(StorageKey::Accruals),
 
             claim_period: INITIAL_CLAIM_PERIOD_MS,
             burn_period: INITIAL_BURN_PERIOD_MS,
