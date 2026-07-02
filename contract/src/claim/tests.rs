@@ -290,6 +290,29 @@ fn test_claim_when_user_has_zero_balance() {
 }
 
 #[test]
+fn claim_with_zero_balance_still_refreshes_claim_period_refreshed_at() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    context.switch_account(&accounts.oracle);
+    contract.set_claim_period(0);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(100))]);
+
+    context.switch_account(&accounts.alice);
+    let _ = contract.claim(); // balance -> 0
+
+    let second_claim_time = 500u64;
+    context.set_block_timestamp_in_seconds(second_claim_time);
+    let _ = contract.claim(); // hits the zero-balance early return
+
+    let refreshed_at = contract.accounts.get_account(&accounts.alice).claim_period_refreshed_at;
+    assert_eq!(
+        second_claim_time as UnixTimestamp, refreshed_at,
+        "a zero-balance claim() call must still refresh claim_period_refreshed_at, \
+         otherwise it can be called every block indefinitely with no cooldown"
+    );
+}
+
+#[test]
 fn test_claimable_balance_presentation() {
     const BURN_PERIOD: Duration = 1_000;
     const TEST_DURATION_FRACTION: f64 = 0.2;
