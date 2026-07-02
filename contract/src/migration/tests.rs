@@ -103,3 +103,42 @@ fn migrate_grants_oracle_role_unconditionally_and_other_roles_only_when_specifie
         contract.acl_get_grantees("UpgradeManager".to_string(), 0, 10).is_empty()
     );
 }
+
+#[test]
+fn unordered_set_clear_empties_a_populated_set() {
+    // Validates the exact mechanism migrate() relies on: near_sdk::store's
+    // clear() genuinely drains every entry (proven functionally here — actual
+    // on-chain storage reclamation is covered by the sandboxed integration
+    // test, since the mocked unit-test VM doesn't track storage_usage from
+    // real read/write calls).
+    init_context();
+
+    let mut set: UnorderedSet<AccountId> = UnorderedSet::new(StorageKey::_OraclesLegacy);
+    for i in 0..20 {
+        set.insert(format!("oracle{i}").parse().unwrap());
+    }
+    assert_eq!(20, set.len());
+
+    set.clear();
+    assert!(set.is_empty());
+    assert_eq!(0, set.iter().count());
+}
+
+#[test]
+fn migrate_calls_grant_roles_for_all_former_oracles_before_dropping_the_old_set() {
+    // Regression guard for the storage-leak fix: migrate() must still visit
+    // and grant every former oracle (proving the clear() added afterward
+    // doesn't run before the grant loop, e.g. via a bad reordering).
+    init_context();
+
+    let oracles: Vec<AccountId> = (0..5).map(|i| format!("oracle{i}").parse().unwrap()).collect();
+    write_old_state_with_oracles(WITHDRAWN_SWEAT, oracles.clone());
+
+    let contract = Contract::migrate(vec![], vec![], vec![], vec![]);
+
+    let mut grantees = contract.acl_get_grantees("Oracle".to_string(), 0, 10);
+    grantees.sort();
+    let mut expected = oracles;
+    expected.sort();
+    assert_eq!(expected, grantees);
+}
