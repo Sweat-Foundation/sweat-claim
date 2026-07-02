@@ -5,7 +5,7 @@ use near_sdk::json_types::U128;
 
 use crate::{
     clean::api::CleanApi,
-    common::{tests::Context, MAX_BATCH_SIZE},
+    common::{tests::Context, MAX_CLEAN_BATCH_SIZE},
 };
 
 #[test]
@@ -70,6 +70,6 @@ fn clean_rejects_a_batch_over_the_max_size() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
     context.switch_account(&accounts.oracle);
 
-    let account_ids: Vec<_> = (0..=MAX_BATCH_SIZE).map(|i| format!("account{i}").parse().unwrap()).collect();
+    let account_ids: Vec<_> = (0..=MAX_CLEAN_BATCH_SIZE).map(|i| format!("account{i}").parse().unwrap()).collect();
     contract.clean(account_ids);
 }
