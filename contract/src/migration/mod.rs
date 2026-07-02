@@ -57,26 +57,26 @@ impl Contract {
 
         contract.acl_init_super_admin(env::current_account_id());
 
+        // One ACL storage handle, reused for every grant below, instead of a fresh
+        // read+deserialize of the ACL root per account.
+        let mut acl = contract.acl_get_or_init();
+
         // Oracle is the only role carried over unconditionally, mirroring the pre-ACL
         // `oracles` set. All other roles must be explicitly assigned by the caller.
         for oracle in old_state.oracles.iter() {
-            contract.acl_get_or_init().grant_role_unchecked(Roles::Oracle, oracle);
+            acl.grant_role_unchecked(Roles::Oracle, oracle);
         }
-        for account in burn_managers {
-            contract.acl_get_or_init().grant_role_unchecked(Roles::BurnManager, &account);
+        for account in &burn_managers {
+            acl.grant_role_unchecked(Roles::BurnManager, account);
         }
-        for account in maintainers {
-            contract.acl_get_or_init().grant_role_unchecked(Roles::Maintainer, &account);
+        for account in &maintainers {
+            acl.grant_role_unchecked(Roles::Maintainer, account);
         }
-        for account in staging_managers {
-            contract
-                .acl_get_or_init()
-                .grant_role_unchecked(Roles::StagingManager, &account);
+        for account in &staging_managers {
+            acl.grant_role_unchecked(Roles::StagingManager, account);
         }
-        for account in upgrade_managers {
-            contract
-                .acl_get_or_init()
-                .grant_role_unchecked(Roles::UpgradeManager, &account);
+        for account in &upgrade_managers {
+            acl.grant_role_unchecked(Roles::UpgradeManager, account);
         }
 
         require!(
