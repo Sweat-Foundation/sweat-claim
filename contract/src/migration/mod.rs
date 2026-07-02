@@ -36,7 +36,12 @@ struct OldState {
 impl Contract {
     #[private]
     #[init(ignore_state)]
-    pub fn migrate() -> Self {
+    pub fn migrate(
+        burn_managers: Vec<AccountId>,
+        maintainers: Vec<AccountId>,
+        staging_managers: Vec<AccountId>,
+        upgrade_managers: Vec<AccountId>,
+    ) -> Self {
         let old_state: OldState = env::state_read().expect("Failed to read old state");
 
         let mut contract = Self {
@@ -52,14 +57,26 @@ impl Contract {
 
         contract.acl_init_super_admin(env::current_account_id());
 
+        // Oracle is the only role carried over unconditionally, mirroring the pre-ACL
+        // `oracles` set. All other roles must be explicitly assigned by the caller.
         for oracle in old_state.oracles.iter() {
             contract.acl_get_or_init().grant_role_unchecked(Roles::Oracle, oracle);
+        }
+        for account in burn_managers {
+            contract.acl_get_or_init().grant_role_unchecked(Roles::BurnManager, &account);
+        }
+        for account in maintainers {
+            contract.acl_get_or_init().grant_role_unchecked(Roles::Maintainer, &account);
+        }
+        for account in staging_managers {
             contract
                 .acl_get_or_init()
-                .grant_role_unchecked(Roles::BurnManager, oracle);
+                .grant_role_unchecked(Roles::StagingManager, &account);
+        }
+        for account in upgrade_managers {
             contract
                 .acl_get_or_init()
-                .grant_role_unchecked(Roles::Maintainer, oracle);
+                .grant_role_unchecked(Roles::UpgradeManager, &account);
         }
 
         require!(

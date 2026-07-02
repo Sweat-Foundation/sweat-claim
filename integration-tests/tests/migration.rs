@@ -100,6 +100,12 @@ async fn oracle_survives_migration_to_acl() -> Result<()> {
     claim.as_account().deploy(&new_bytes).await?.into_result()?;
     claim
         .call("migrate")
+        .args_json(json!({
+            "burn_managers": [oracle.id()],
+            "maintainers": [oracle.id()],
+            "staging_managers": [],
+            "upgrade_managers": [],
+        }))
         .max_gas()
         .transact()
         .await?
