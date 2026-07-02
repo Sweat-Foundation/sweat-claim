@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use claim_model::{
-    api::{ClaimApi, ConfigApi, RecordApi},
+    api::{AuthApi, ClaimApi, ConfigApi, RecordApi},
     ClaimAvailabilityView, ClaimableBalanceView, Duration, UnixTimestamp,
 };
 use near_sdk::{json_types::U128, PromiseOrValue};
@@ -310,6 +310,20 @@ fn claim_with_zero_balance_still_refreshes_claim_period_refreshed_at() {
         "a zero-balance claim() call must still refresh claim_period_refreshed_at, \
          otherwise it can be called every block indefinitely with no cooldown"
     );
+}
+
+#[test]
+#[should_panic(expected = "Account is disabled")]
+fn claim_by_disabled_account_panics() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(700_000))]);
+    contract.set_account_enabled(accounts.alice.clone(), false);
+
+    context.set_block_timestamp_in_seconds(contract.claim_period as u64 + 100);
+    context.switch_account(&accounts.alice);
+    let _ = contract.claim();
 }
 
 #[test]

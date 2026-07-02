@@ -93,6 +93,23 @@ pub trait AuthApi {
     ///
     /// This method will panic if the caller does not hold the `Maintainer` role.
     fn reset_service_call_flag(&mut self);
+
+    /// Enables or disables the specified account.
+    ///
+    /// A disabled account cannot `claim()`. This does not affect `record_batch_for_hold`:
+    /// disabling an account blocks it from withdrawing, it doesn't stop the contract from
+    /// crediting it.
+    ///
+    /// # Arguments
+    ///
+    /// * `account_id` - The ID of the account to enable or disable.
+    /// * `enabled` - `true` to enable, `false` to disable.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if the caller does not hold the `Maintainer` role, or if the
+    /// specified account is not found.
+    fn set_account_enabled(&mut self, account_id: AccountId, enabled: bool);
 }
 
 /// An API for burning unclaimed tokens in the smart contract. This is essential for

@@ -2,7 +2,11 @@ use near_workspaces::types::NearToken;
 use serde_json::json;
 
 mod common;
-use common::{helpers::grant_role, panic::PanicFinder, prepare::prepare_contract};
+use common::{
+    helpers::{fast_forward_minutes, grant_role},
+    panic::PanicFinder,
+    prepare::prepare_contract,
+};
 
 const INSUFFICIENT_PERMISSIONS: &str = "Insufficient permissions";
 
@@ -214,6 +218,67 @@ async fn clean_by_non_maintainer_panics() -> anyhow::Result<()> {
         .alice
         .call(context.claim.id(), "clean")
         .args_json(json!({ "account_ids": [context.alice.id()] }))
+        .transact()
+        .await?
+        .into_result();
+
+    assert!(result.has_panic(INSUFFICIENT_PERMISSIONS));
+    Ok(())
+}
+
+#[tokio::test]
+#[tracing::instrument]
+async fn set_account_enabled_by_maintainer_succeeds_and_blocks_claim() -> anyhow::Result<()> {
+    let context = prepare_contract(None, None).await?;
+    context
+        .manager
+        .call(context.claim.id(), "record_batch_for_hold")
+        .args_json(json!({ "amounts": [[context.alice.id(), "1000"]] }))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let result = context
+        .manager
+        .call(context.claim.id(), "set_account_enabled")
+        .args_json(json!({ "account_id": context.alice.id(), "enabled": false }))
+        .transact()
+        .await?
+        .into_result();
+    assert!(result.is_ok());
+
+    // CLAIM_PERIOD (prepare.rs default) must elapse before claim() gets past the
+    // availability check and reaches the is_enabled check this test targets.
+    fast_forward_minutes(&context.worker, 31).await?;
+
+    let claim_result = context
+        .alice
+        .call(context.claim.id(), "claim")
+        .max_gas()
+        .transact()
+        .await?
+        .into_result();
+    assert!(claim_result.has_panic("Account is disabled"));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[tracing::instrument]
+async fn set_account_enabled_by_non_maintainer_panics() -> anyhow::Result<()> {
+    let context = prepare_contract(None, None).await?;
+    context
+        .manager
+        .call(context.claim.id(), "record_batch_for_hold")
+        .args_json(json!({ "amounts": [[context.alice.id(), "1000"]] }))
+        .transact()
+        .await?
+        .into_result()?;
+
+    let result = context
+        .alice
+        .call(context.claim.id(), "set_account_enabled")
+        .args_json(json!({ "account_id": context.alice.id(), "enabled": false }))
         .transact()
         .await?
         .into_result();

@@ -57,6 +57,7 @@ impl ClaimApi for Contract {
 
         let account = account.expect("unreachable: is_available implies the account exists");
         require!(!account.is_locked, "Another operation is running");
+        require!(account.is_enabled, "Account is disabled");
 
         // No separate zero-balance early return: a zero balance means
         // amount_to_burn and amount_to_claim both come out to 0 below, which
