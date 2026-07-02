@@ -160,7 +160,7 @@ impl AccountRecord {
         if self.claim_period_refreshed_at > claimable_window_start {
             0
         } else {
-            self.get_burn_rate(burn_period) * u128::from(claimable_window_start - self.burn_since)
+            self.get_burn_rate(burn_period) * u128::from(claimable_window_start.saturating_sub(self.burn_since))
         }
         .min(self.balance)
     }
