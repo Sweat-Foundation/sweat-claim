@@ -3,7 +3,10 @@
 use claim_model::api::RecordApi;
 use near_sdk::json_types::U128;
 
-use crate::{clean::api::CleanApi, common::tests::Context};
+use crate::{
+    clean::api::CleanApi,
+    common::{tests::Context, MAX_BATCH_SIZE},
+};
 
 #[test]
 fn test_clean_single_account_by_oracle() {
@@ -59,4 +62,14 @@ fn test_clean_multiple_accounts_by_oracle() {
 
     let bob_record = contract.accounts.get(&accounts.bob);
     assert!(bob_record.is_none());
+}
+
+#[test]
+#[should_panic(expected = "Batch size exceeds the maximum allowed")]
+fn clean_rejects_a_batch_over_the_max_size() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    context.switch_account(&accounts.oracle);
+
+    let account_ids: Vec<_> = (0..=MAX_BATCH_SIZE).map(|i| format!("account{i}").parse().unwrap()).collect();
+    contract.clean(account_ids);
 }

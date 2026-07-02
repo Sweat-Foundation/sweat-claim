@@ -3,11 +3,11 @@ use claim_model::{
     event::{emit, EventKind::Record, RecordAmountDetailed, RecordData},
 };
 use near_plugins::{access_control_any, AccessControllable};
-use near_sdk::{json_types::U128, near_bindgen, AccountId};
+use near_sdk::{json_types::U128, near_bindgen, require, AccountId};
 
 use crate::{
     auth::Roles,
-    common::{now_seconds, AccountAccessor},
+    common::{now_seconds, AccountAccessor, MAX_BATCH_SIZE},
     Contract, ContractExt,
 };
 
@@ -15,6 +15,8 @@ use crate::{
 impl RecordApi for Contract {
     #[access_control_any(roles(Roles::Oracle))]
     fn record_batch_for_hold(&mut self, amounts: Vec<(AccountId, U128)>) {
+        require!(amounts.len() <= MAX_BATCH_SIZE, "Batch size exceeds the maximum allowed");
+
         // Default value can be 0 only in tests.
         let claimable_window_start = self.get_claimable_window_start();
         let mut event_data = RecordData::new(now_seconds());
