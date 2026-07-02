@@ -1,6 +1,6 @@
 use near_sdk::{json_types::U128, AccountId, PromiseOrValue};
 
-use crate::{BurnStatus, ClaimAvailabilityView, ClaimResultView, ClaimableBalanceView, Duration, UnixTimestamp};
+use crate::{BurnStatus, ClaimAvailabilityView, ClaimResultView, ClaimableBalanceView, Duration};
 
 /// An API for initializing smart contracts in the context of fungible token operations.
 ///
@@ -193,12 +193,4 @@ pub trait ClaimApi {
     /// Panics if the claim is unavailable at the moment of calling. Users should ensure that
     /// their claim is available using the `is_claim_available` method prior to calling this.
     fn claim(&mut self) -> PromiseOrValue<ClaimResultView>;
-}
-
-pub trait MigrationApi {
-    fn migrate() -> Self;
-
-    fn migrate_accounts(&mut self, accounts: Vec<AccountId>);
-
-    fn cleanup(&mut self, keys: Vec<UnixTimestamp>);
 }
