@@ -4,11 +4,7 @@
 // which is out of scope for this dependency update.
 #![allow(deprecated)]
 
-use claim_model::{
-    account_record::{AccountRecordLegacy, AccountRecordVersioned},
-    api::InitApi,
-    Duration, TokensAmount,
-};
+use claim_model::{account_record::AccountRecordVersioned, api::InitApi, Duration, TokensAmount};
 use near_plugins::{access_control, AccessControlRole, AccessControllable, Upgradable};
 use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
@@ -70,10 +66,6 @@ pub struct Contract {
     /// are considered for burning, helping in regulating the token supply.
     burn_period: Duration,
 
-    /// Kept only so pre-linear-burn on-chain state still deserializes correctly;
-    /// no current code path reads or writes it.
-    accounts_legacy: LookupMap<AccountId, AccountRecordLegacy>,
-
     accounts: LookupMap<AccountId, AccountRecordVersioned>,
 
     /// Indicates whether a service call is currently in progress.
@@ -89,11 +81,11 @@ pub struct Contract {
 #[derive(BorshStorageKey, BorshSerialize)]
 #[borsh(crate = "near_sdk::borsh")]
 enum StorageKey {
-    AccountsLegacy,
     // Renamed, not removed: deleting any of these variants would shift `Accounts`'s
     // Borsh discriminant (its storage-prefix byte), silently orphaning all stored
     // balances. Only referenced by migration/tests.rs now that Contract itself has
-    // dropped the `accruals` field.
+    // dropped the `accruals`/`accounts_legacy` fields.
+    _AccountsLegacy,
     _Accruals,
     _AccrualsEntryLegacy(u32),
     _OraclesLegacy,
@@ -109,7 +101,6 @@ impl InitApi for Contract {
         let mut contract = Self {
             token_account_id,
 
-            accounts_legacy: LookupMap::new(StorageKey::AccountsLegacy),
             accounts: LookupMap::new(StorageKey::Accounts),
 
             claim_period: INITIAL_CLAIM_PERIOD_SEC,

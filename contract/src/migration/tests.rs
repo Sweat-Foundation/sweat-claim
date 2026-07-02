@@ -44,7 +44,7 @@ fn write_old_state_with_oracles(balance_to_burn: TokensAmount, oracles: Vec<Acco
         claim_period: 1,
         burn_period: 2,
         accruals: UnorderedMap::new(StorageKey::_Accruals),
-        accounts_legacy: LookupMap::new(StorageKey::AccountsLegacy),
+        accounts_legacy: LookupMap::new(StorageKey::_AccountsLegacy),
         accounts: LookupMap::new(StorageKey::Accounts),
         is_service_call_running: false,
         balance_to_burn,
