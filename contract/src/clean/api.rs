@@ -5,8 +5,6 @@ use near_sdk::{near_bindgen, require, AccountId};
 use crate::{auth::Roles, common::MAX_BATCH_SIZE, Contract, ContractExt};
 
 pub trait CleanApi {
-    // Invoked via the near_bindgen-generated wasm export; appears unused on the host build.
-    #[allow(dead_code)]
     fn clean(&mut self, account_ids: Vec<AccountId>);
 }
 
