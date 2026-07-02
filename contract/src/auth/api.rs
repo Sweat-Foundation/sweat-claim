@@ -11,4 +11,9 @@ impl AuthApi for Contract {
         let account = self.accounts.get_account_mut(&account_id);
         account.is_locked = false;
     }
+
+    #[access_control_any(roles(Roles::Maintainer))]
+    fn reset_service_call_flag(&mut self) {
+        self.is_service_call_running = false;
+    }
 }
