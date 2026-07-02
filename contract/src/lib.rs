@@ -4,12 +4,14 @@
 // which is out of scope for this dependency update.
 #![allow(deprecated)]
 
-use claim_model::{account_record::AccountRecordVersioned, api::InitApi, Duration, TokensAmount};
+use claim_model::{
+    account_record::AccountRecordVersioned, api::InitApi, Duration, TokensAmount, UnixTimestamp,
+};
 use near_plugins::{access_control, AccessControlRole, AccessControllable, Upgradable};
 use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
     env, near, near_bindgen,
-    store::LookupMap,
+    store::{LookupMap, UnorderedMap, Vector},
     AccountId, BorshStorageKey, PanicOnDefault,
 };
 
@@ -68,6 +70,14 @@ pub struct Contract {
 
     accounts: LookupMap<AccountId, AccountRecordVersioned>,
 
+    /// Dead weight since the linear-burn rewrite — nothing reads or writes entries
+    /// here anymore. Kept on the struct (rather than dropped during the ACL
+    /// migration) solely so its storage can eventually be reclaimed via a
+    /// paginated cleanup method; an unconditional clear risks running out of gas
+    /// on a deployment with substantial pre-linear-burn history. See
+    /// `get_legacy_accruals_count` and `migration/mod.rs`.
+    accruals: UnorderedMap<UnixTimestamp, (Vector<TokensAmount>, TokensAmount)>,
+
     /// Indicates whether a service call is currently in progress.
     ///
     /// `is_service_call_running` is used to prevent double spending by indicating if the
@@ -83,10 +93,11 @@ pub struct Contract {
 enum StorageKey {
     // Renamed, not removed: deleting any of these variants would shift `Accounts`'s
     // Borsh discriminant (its storage-prefix byte), silently orphaning all stored
-    // balances. Only referenced by migration/tests.rs now that Contract itself has
-    // dropped the `accruals`/`accounts_legacy` fields.
+    // balances. `accounts_legacy` was dropped from Contract entirely (LookupMap
+    // can't enumerate its own keys, so there's no cleanup path for it regardless);
+    // `_AccountsLegacy` is only referenced by migration/tests.rs now.
     _AccountsLegacy,
-    _Accruals,
+    Accruals,
     _AccrualsEntryLegacy(u32),
     _OraclesLegacy,
     Accounts,
@@ -102,6 +113,7 @@ impl InitApi for Contract {
             token_account_id,
 
             accounts: LookupMap::new(StorageKey::Accounts),
+            accruals: UnorderedMap::new(StorageKey::Accruals),
 
             claim_period: INITIAL_CLAIM_PERIOD_SEC,
             burn_period: INITIAL_BURN_PERIOD_SEC,

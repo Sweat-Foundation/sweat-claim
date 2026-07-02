@@ -4,7 +4,7 @@ use claim_model::TokensAmount;
 use near_plugins::AccessControllable;
 use near_sdk::{
     env,
-    store::{LookupMap, UnorderedMap, UnorderedSet},
+    store::{LookupMap, UnorderedMap, UnorderedSet, Vector},
     test_utils::VMContextBuilder,
     testing_env, AccountId,
 };
@@ -43,7 +43,7 @@ fn write_old_state_with_oracles(balance_to_burn: TokensAmount, oracles: Vec<Acco
         oracles: oracles_set,
         claim_period: 1,
         burn_period: 2,
-        accruals: UnorderedMap::new(StorageKey::_Accruals),
+        accruals: UnorderedMap::new(StorageKey::Accruals),
         accounts_legacy: LookupMap::new(StorageKey::_AccountsLegacy),
         accounts: LookupMap::new(StorageKey::Accounts),
         is_service_call_running: false,
@@ -122,6 +122,37 @@ fn unordered_set_clear_empties_a_populated_set() {
     set.clear();
     assert!(set.is_empty());
     assert_eq!(0, set.iter().count());
+}
+
+#[test]
+fn migrate_carries_accruals_through_without_clearing() {
+    init_context();
+
+    let mut accruals = UnorderedMap::new(StorageKey::Accruals);
+    for i in 0..5u32 {
+        accruals.insert(i, (Vector::new(StorageKey::_AccrualsEntryLegacy(i)), 0));
+    }
+
+    let old_state = OldState {
+        token_account_id: "token".parse().unwrap(),
+        oracles: UnorderedSet::new(StorageKey::_OraclesLegacy),
+        claim_period: 1,
+        burn_period: 2,
+        accruals,
+        accounts_legacy: LookupMap::new(StorageKey::_AccountsLegacy),
+        accounts: LookupMap::new(StorageKey::Accounts),
+        is_service_call_running: false,
+        balance_to_burn: WITHDRAWN_SWEAT,
+    };
+    env::state_write(&old_state);
+
+    let contract = Contract::migrate(vec![], vec![], vec![], vec![]);
+
+    assert_eq!(
+        5,
+        contract.get_legacy_accruals_count(),
+        "accruals must survive migration untouched, not be cleared or dropped"
+    );
 }
 
 #[test]
