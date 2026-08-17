@@ -1,9 +1,13 @@
 #!/bin/bash
 set -eox pipefail
 
-echo ">> Building contract"
+echo ">> Building contract for integration tests"
 
-rustup target add wasm32-unknown-unknown
-cargo build -p sweat_claim --target wasm32-unknown-unknown --profile=contract --features integration-test
-
-cp ./target/wasm32-unknown-unknown/contract/sweat_claim.wasm res/sweat_claim.wasm
+# Builds the contract wasm consumed by integration-tests/ (its own cargo
+# workspace, see Cargo.toml) — near-workspaces deploys this file via the
+# CLAIM_WASM env var / default path in integration-tests/tests/common/prepare.rs.
+cargo near build non-reproducible-wasm \
+  --no-abi \
+  --locked \
+  --manifest-path contract/Cargo.toml \
+  --out-dir res

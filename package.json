@@ -12,7 +12,6 @@
     "postinstall": "echo no frontend && echo rs tests && echo rs contract"
   },
   "devDependencies": {
-    "near-cli": "^3.3.0"
-  },
-  "dependencies": {}
+    "near-cli": "^3.5.0"
+  }
 }

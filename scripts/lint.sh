@@ -3,7 +3,7 @@ set -eox pipefail
 
 rustup component add clippy
 
-cargo clippy --all \
+cargo clippy -p sweat_claim --target wasm32-unknown-unknown \
   -- \
   \
   -W clippy::all \
@@ -12,5 +12,7 @@ cargo clippy --all \
   -A clippy::module_name_repetitions \
   -A clippy::needless-pass-by-value \
   -A clippy::must-use-candidate \
+  -A clippy::missing_panics_doc \
+  -A clippy::module_inception \
   \
   -D warnings

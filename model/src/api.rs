@@ -1,19 +1,11 @@
-use integration_trait::make_integration_version;
 use near_sdk::{json_types::U128, AccountId, PromiseOrValue};
 
-use crate::{ClaimAvailabilityView, ClaimResultView, Duration};
-
-#[cfg(feature = "integration-test")]
-pub struct ClaimContract<'a> {
-    pub contract: &'a near_workspaces::Contract,
-}
-
+use crate::{BurnStatus, ClaimAvailabilityView, ClaimResultView, ClaimableBalanceView, Duration};
 
 /// An API for initializing smart contracts in the context of fungible token operations.
 ///
 /// This API provides a method to initialize the smart contract, primarily for interactions
 /// with a specified fungible token contract.
-#[make_integration_version]
 pub trait InitApi {
     /// Initializes the smart contract with a specified fungible token contract.
     ///
@@ -35,7 +27,6 @@ pub trait InitApi {
 ///
 /// This API allows for dynamic configuration of certain operational parameters
 /// of the smart contract.
-#[make_integration_version]
 pub trait ConfigApi {
     /// Sets the claim period for the smart contract.
     ///
@@ -68,59 +59,69 @@ pub trait ConfigApi {
     fn set_burn_period(&mut self, period: Duration);
 }
 
-/// An API for managing authorization of oracles for sensitive operations in the smart contract.
+/// An API for authorization-related maintenance operations in the smart contract.
 ///
-/// This API allows managing of oracles, which are accounts authorized to perform
-/// sensitive operations.
-#[make_integration_version]
+/// Role management (granting/revoking roles such as `Oracle`, `BurnManager`, and `Maintainer`)
+/// is handled by near-plugins's `AccessControllable` (`acl_grant_role`/`acl_revoke_role`/
+/// `acl_get_grantees`), not by this trait.
 pub trait AuthApi {
-    /// Adds an oracle to the smart contract.
+    /// Unlocks the specified account.
     ///
-    /// Registers an oracle identified by `account_id`, authorizing them for sensitive operations.
-    /// This method is private and can only be called by the account where the contract is deployed.
-    /// It will panic if an attempt is made to register the same oracle twice.
-    ///
-    /// # Arguments
-    ///
-    /// * `account_id` - An `AccountId` representing the oracle to be added.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the oracle is already registered.
-    fn add_oracle(&mut self, account_id: AccountId);
-
-    /// Removes an oracle from the smart contract.
-    ///
-    /// Revokes authorization from an oracle identified by `account_id`. This method is private
-    /// and can only be called by the account where the contract is deployed. It will panic
-    /// if there is no registered oracle with the specified `account_id`.
+    /// This method allows a `Maintainer` to unlock an account that may have been locked due to an
+    /// error occurring during a cross-contract call. When a cross-contract call fails, the account
+    /// might be locked to prevent further operations until the error is resolved.
     ///
     /// # Arguments
     ///
-    /// * `account_id` - An `AccountId` representing the oracle to be removed.
+    /// * `account_id` - The ID of the account to be unlocked.
     ///
     /// # Panics
     ///
-    /// Panics if no oracle with the specified `account_id` is registered.
-    fn remove_oracle(&mut self, account_id: AccountId);
+    /// This method will panic if the caller does not hold the `Maintainer` role, or if the
+    /// specified account is not found.
+    fn unlock_account(&mut self, account_id: AccountId);
 
-    /// Retrieves the list of registered oracles.
+    /// Resets the contract-wide service call flag.
     ///
-    /// Returns a vector of `AccountId`s representing the oracles currently authorized
-    /// for sensitive operations.
+    /// `burn()` sets this flag while its cross-contract burn call is in flight and clears it
+    /// in the callback; if that callback ever panics before clearing it (e.g. an unexpected
+    /// token-contract response), every subsequent `burn()` call would be permanently blocked
+    /// with no recovery path. This gives a `Maintainer` the same kind of escape hatch
+    /// `unlock_account` provides for a stuck per-account `is_locked` flag.
     ///
-    /// # Returns
+    /// # Panics
     ///
-    /// Returns a `Vec<AccountId>` containing the account IDs of the registered oracles.
-    fn get_oracles(&self) -> Vec<AccountId>;
+    /// This method will panic if the caller does not hold the `Maintainer` role.
+    fn reset_service_call_flag(&mut self);
+
+    /// Enables or disables the specified account.
+    ///
+    /// A disabled account cannot `claim()`. This does not affect `record_batch_for_hold`:
+    /// disabling an account blocks it from withdrawing, it doesn't stop the contract from
+    /// crediting it.
+    ///
+    /// # Arguments
+    ///
+    /// * `account_id` - The ID of the account to enable or disable.
+    /// * `enabled` - `true` to enable, `false` to disable.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if the caller does not hold the `Maintainer` role, or if the
+    /// specified account is not found.
+    fn set_account_enabled(&mut self, account_id: AccountId, enabled: bool);
 }
 
 /// An API for burning unclaimed tokens in the smart contract. This is essential for
 /// managing the lifecycle of tokens and ensuring that unclaimed tokens are appropriately
 /// disposed of after a certain period.
-#[make_integration_version]
 pub trait BurnApi {
-    /// Burns all unclaimed tokens older than `Contract.burn_period`.
+    /// Burns unclaimed tokens older than `Contract.burn_period`.
+    ///
+    /// # Arguments
+    ///
+    /// * `amount` - If `Some`, burns exactly this amount. If `None`, burns everything
+    ///   currently available (`Contract.balance_to_burn`).
     ///
     /// # Returns
     ///
@@ -128,15 +129,32 @@ pub trait BurnApi {
     ///
     /// # Panics
     ///
-    /// Panics if called by any entity other than the oracle. Only the oracle has the
-    /// authority to initiate the burn process.
+    /// Panics if called by any account that doesn't hold the `BurnManager` role.
+    ///
+    /// Panics if `amount` is `Some` and exceeds `Contract.balance_to_burn`.
     ///
     /// Panics if another service call is running.
-    fn burn(&mut self) -> PromiseOrValue<U128>;
+    fn burn(&mut self, amount: Option<U128>) -> PromiseOrValue<U128>;
+
+    /// Retrieves the burn status for a given account.
+    ///
+    /// This method returns a `BurnStatus` struct containing data required to calculate
+    /// when a user's balance will start evaporating. The `account_id` parameter specifies
+    /// the ID of the account for which the burn status is requested.
+    ///
+    /// # Arguments
+    ///
+    /// * `account_id` - The ID of the account for which to retrieve burn status.
+    ///
+    /// # Returns
+    ///
+    /// A `BurnStatus` struct containing information about the burn status of the account.
+    fn get_burn_status(&self, account_id: AccountId) -> BurnStatus;
+
+    fn get_balance_to_burn(&self) -> U128;
 }
 
 /// An API for recording (updating) user balances in the smart contract.
-#[make_integration_version]
 pub trait RecordApi {
     /// Records (updates) the balance for a batch of users.
     ///
@@ -157,7 +175,6 @@ pub trait RecordApi {
 }
 
 /// An API for managing the claiming process of accrued tokens in the smart contract.
-#[make_integration_version]
 pub trait ClaimApi {
     /// Retrieves the amount of claimable tokens for a specified account.
     ///
@@ -172,7 +189,7 @@ pub trait ClaimApi {
     ///
     /// Returns a `U128` value indicating the amount of claimable tokens for the provided
     /// `account_id`.
-    fn get_claimable_balance_for_account(&self, account_id: AccountId) -> U128;
+    fn get_claimable_balance_for_account(&self, account_id: AccountId, detailed: Option<bool>) -> ClaimableBalanceView;
 
     /// Checks if the claim is available for a specified account.
     ///

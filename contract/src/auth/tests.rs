@@ -1,70 +1,143 @@
 #![cfg(test)]
 
-use claim_model::api::AuthApi;
+use claim_model::api::{AuthApi, RecordApi};
+use near_plugins::AccessControllable;
+use near_sdk::json_types::U128;
 
-use crate::common::tests::Context;
+use crate::common::{tests::Context, AccountAccessor};
 
 #[test]
-fn add_oracle_by_contract_owner() {
+fn grant_oracle_role_by_super_admin() {
     let (mut context, mut contract, accounts) = Context::init();
     context.switch_account(&accounts.owner);
-    contract.add_oracle(accounts.oracle.clone());
 
-    let oracles = contract.get_oracles();
-    assert_eq!(oracles, vec![accounts.oracle.clone()]);
+    let granted = contract.acl_grant_role("Oracle".to_string(), accounts.oracle.clone());
+    assert_eq!(Some(true), granted);
+
+    let grantees = contract.acl_get_grantees("Oracle".to_string(), 0, 10);
+    assert_eq!(grantees, vec![accounts.oracle.clone()]);
 }
 
 #[test]
-#[should_panic(expected = "Method is private")]
-fn add_oracle_not_by_contract_owner() {
+fn grant_oracle_role_by_non_admin_is_noop() {
     let (mut context, mut contract, accounts) = Context::init();
+    context.switch_account(&accounts.alice);
+
+    let granted = contract.acl_grant_role("Oracle".to_string(), accounts.oracle.clone());
+    assert_eq!(None, granted);
+
+    let grantees = contract.acl_get_grantees("Oracle".to_string(), 0, 10);
+    assert!(grantees.is_empty());
+}
+
+#[test]
+fn revoke_oracle_role_by_super_admin() {
+    let (mut context, mut contract, accounts) = Context::init();
+    context.switch_account(&accounts.owner);
+
+    contract.acl_grant_role("Oracle".to_string(), accounts.oracle.clone());
+    let revoked = contract.acl_revoke_role("Oracle".to_string(), accounts.oracle.clone());
+    assert_eq!(Some(true), revoked);
+
+    let grantees = contract.acl_get_grantees("Oracle".to_string(), 0, 10);
+    assert!(grantees.is_empty());
+}
+
+#[test]
+fn unlock_account_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    let alice_id = accounts.alice;
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))]);
+    contract.accounts.get_or_insert_account_mut(&alice_id).is_locked = true;
+
+    contract.unlock_account(alice_id.clone());
+
+    assert!(!contract.accounts.get_account(&alice_id).is_locked);
+}
+
+#[test]
+#[should_panic(expected = "Account not found")]
+fn unlock_not_existing_account_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    let alice_id = accounts.alice;
+
+    context.switch_account(&accounts.oracle);
+    contract.unlock_account(alice_id.clone());
+}
+
+#[test]
+#[should_panic(expected = "Insufficient permissions")]
+fn unlock_account_not_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    let alice_id = accounts.alice;
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))]);
+    contract.accounts.get_or_insert_account_mut(&alice_id).is_locked = true;
+
+    context.switch_account(&alice_id);
+    contract.unlock_account(alice_id.clone());
+}
+
+#[test]
+fn reset_service_call_flag_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    contract.is_service_call_running = true;
+
+    context.switch_account(&accounts.oracle);
+    contract.reset_service_call_flag();
+
+    assert!(!contract.is_service_call_running);
+}
+
+#[test]
+#[should_panic(expected = "Insufficient permissions")]
+fn reset_service_call_flag_not_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    contract.is_service_call_running = true;
 
     context.switch_account(&accounts.alice);
-    contract.add_oracle(accounts.oracle.clone());
+    contract.reset_service_call_flag();
 }
 
 #[test]
-#[should_panic(expected = "Already exists")]
-fn add_oracle_twice() {
-    let (mut context, mut contract, accounts) = Context::init();
+fn set_account_enabled_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    let alice_id = accounts.alice;
 
-    context.switch_account(&accounts.owner);
-    contract.add_oracle(accounts.oracle.clone());
-    contract.add_oracle(accounts.oracle.clone());
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))]);
+
+    contract.set_account_enabled(alice_id.clone(), false);
+    assert!(!contract.accounts.get_account(&alice_id).is_enabled);
+
+    contract.set_account_enabled(alice_id.clone(), true);
+    assert!(contract.accounts.get_account(&alice_id).is_enabled);
 }
 
 #[test]
-fn remove_oracle_by_contract_owner() {
-    let (mut context, mut contract, accounts) = Context::init();
+#[should_panic(expected = "Account not found")]
+fn set_account_enabled_for_not_existing_account_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    let alice_id = accounts.alice;
 
-    context.switch_account(&accounts.owner);
-    contract.add_oracle(accounts.oracle.clone());
-
-    let oracles = contract.get_oracles();
-    assert_eq!(oracles, vec![accounts.oracle.clone()]);
-
-    contract.remove_oracle(accounts.oracle.clone());
-
-    let oracles = contract.get_oracles();
-    assert!(oracles.is_empty());
+    context.switch_account(&accounts.oracle);
+    contract.set_account_enabled(alice_id, false);
 }
 
 #[test]
-#[should_panic(expected = "Method is private")]
-fn remove_oracle_not_by_contract_owner() {
-    let (mut context, mut contract, accounts) = Context::init();
+#[should_panic(expected = "Insufficient permissions")]
+fn set_account_enabled_not_by_maintainer() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+    let alice_id = accounts.alice;
 
-    contract.oracles.insert(accounts.oracle.clone());
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(alice_id.clone(), U128(1_000_000_000))]);
 
-    context.switch_account(&accounts.alice);
-    contract.remove_oracle(accounts.oracle.clone());
-}
-
-#[test]
-#[should_panic(expected = "No such oracle")]
-fn remove_not_existing_oracle() {
-    let (mut context, mut contract, accounts) = Context::init();
-
-    context.switch_account(&accounts.owner);
-    contract.remove_oracle(accounts.oracle.clone());
+    context.switch_account(&alice_id);
+    contract.set_account_enabled(alice_id.clone(), false);
 }

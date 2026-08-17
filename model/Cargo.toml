@@ -1,21 +1,14 @@
 [package]
 name = "claim-model"
-version = "1.0.0"
+version = "2.1.3"
 edition = "2021"
 
 [lib]
 name = "claim_model"
 
-[features]
-default = []
-integration-test = ["dep:integration-utils", "dep:near-workspaces"]
-
-
 [dependencies]
-anyhow = { workspace = true }
 near-sdk = { workspace = true }
-async-trait = { workspace = true }
-integration-trait = { workspace = true }
 
-integration-utils = { workspace = true, optional = true }
-near-workspaces = { workspace = true, optional = true }
+[dev-dependencies]
+# Provides the mocked host environment so the crate's unit tests can link.
+near-sdk = { workspace = true, features = ["unit-testing"] }

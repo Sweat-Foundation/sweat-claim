@@ -1,0 +1,19 @@
+name: Remove DAO Blob
+
+on:
+  workflow_dispatch:
+    inputs:
+      hash:
+        description: Base58 sha256 hash of the blob to remove (as returned by store_blob).
+        required: true
+        type: string
+
+jobs:
+  remove-blob:
+    uses: Sweat-Foundation/actions/.github/workflows/remove-blob.yml@v1
+    with:
+      dao-account-id: sweat-multisig.sputnik-dao.near
+      proposer-account-id: 4a95fda44bc5fa6ff57dd742fe42a78d9889a310d188d9de9c803b1fc392f910
+      hash: ${{ inputs.hash }}
+    secrets:
+      proposer-private-key: ${{ secrets.PROPOSER_PRIVATE_KEY }}

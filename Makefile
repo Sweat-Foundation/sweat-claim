@@ -26,16 +26,22 @@ cov: ##@Testing Run unit tests with coverage.
 test: ##@Testing Run unit tests.
 	cargo test --package sweat_claim
 
-integration: ##@Testing Run integration tests.
-	cargo test --package integration-tests
+integration: build-integration ##@Testing Run integration tests.
+	cd integration-tests && cargo test
 
 int: integration ##@Testing Shorthand for `integration`
+
+integration-log: build-integration ##@Testing Run integration tests with logs (serial). Override level via RUST_LOG.
+	cd integration-tests && RUST_LOG=$${RUST_LOG:-info,near_workspaces=warn} cargo test -- --nocapture --test-threads=1
 
 fmt: ##@Chores Format the code using rustfmt nightly.
 	cargo +nightly fmt --all
 
 lint: ##@Chores Run lint checks with Clippy.
 	./scripts/lint.sh
+
+charts: ##@Chores Render charts.
+	./scripts/render-charts.sh
 
 HELP_FUN = \
     %help; while(<>){push@{$$help{$$2//'options'}},[$$1,$$3] \

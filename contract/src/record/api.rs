@@ -1,44 +1,58 @@
 use claim_model::{
-    account_record::AccountRecord,
     api::RecordApi,
-    event::{emit, EventKind::Record, RecordData},
+    event::{emit, EventKind::Record, RecordAmountDetailed, RecordData},
 };
-use near_sdk::{json_types::U128, near_bindgen, store::Vector, AccountId};
+use near_plugins::{access_control_any, AccessControllable};
+use near_sdk::{json_types::U128, near_bindgen, require, AccountId};
 
-use crate::{common::now_seconds, Contract, ContractExt, StorageKey::AccrualsEntry};
+use crate::{
+    auth::Roles,
+    common::{now_seconds, AccountAccessor, MAX_RECORD_BATCH_SIZE},
+    Contract, ContractExt,
+};
 
 #[near_bindgen]
 impl RecordApi for Contract {
+    #[access_control_any(roles(Roles::Oracle))]
     fn record_batch_for_hold(&mut self, amounts: Vec<(AccountId, U128)>) {
-        self.assert_oracle();
+        require!(
+            amounts.len() <= MAX_RECORD_BATCH_SIZE,
+            "Batch size exceeds the maximum allowed"
+        );
 
-        let now_seconds = now_seconds();
-        let mut event_data = RecordData::new(now_seconds);
-
-        let balances = self
-            .accruals
-            .entry(now_seconds)
-            .or_insert_with(|| (Vector::new(AccrualsEntry(now_seconds)), 0));
+        // Default value can be 0 only in tests.
+        let claimable_window_start = self.get_claimable_window_start();
+        let mut event_data = RecordData::new(now_seconds());
 
         for (account_id, amount) in amounts {
-            event_data.amounts.push((account_id.clone(), amount));
+            let account = self.accounts.get_or_insert_account_mut(&account_id);
+            let balance_to_burn = account.get_balance_to_burn(self.burn_period, claimable_window_start);
 
-            let amount = amount.0;
-            let index = balances.0.len();
-
-            balances.1 += amount;
-            balances.0.push(amount);
-
-            if let Some(record) = self.accounts.get_mut(&account_id) {
-                record.accruals.push((now_seconds, index));
-            } else {
-                let record = AccountRecord {
-                    accruals: vec![(now_seconds, index)],
-                    ..AccountRecord::new(now_seconds)
-                };
-
-                self.accounts.insert(account_id, record);
+            if balance_to_burn > 0 {
+                account.balance -= balance_to_burn;
             }
+
+            // Advance the evaporation window start whenever it has genuinely moved
+            // forward, even if nothing crystallized into balance_to_burn this call
+            // (e.g. the account's balance is currently 0), so a fresh top-up isn't
+            // backdated to a stale burn_since.
+            if claimable_window_start > account.burn_since {
+                account.burn_since = claimable_window_start;
+            }
+
+            account.balance += amount.0;
+
+            if balance_to_burn > 0 {
+                self.credit_balance_to_burn(balance_to_burn);
+            }
+
+            event_data.amounts.push((
+                account_id.clone(),
+                RecordAmountDetailed {
+                    credited: amount,
+                    burnt: U128(balance_to_burn),
+                },
+            ));
         }
 
         emit(Record(event_data));

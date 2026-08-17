@@ -29,8 +29,8 @@ pub struct BurnData {
 #[serde(crate = "near_sdk::serde")]
 pub struct ClaimData {
     pub account_id: AccountId,
-    pub details: Vec<(UnixTimestamp, U128)>,
-    pub total_claimed: U128,
+    pub claimed: U128,
+    pub burnt: U128,
 }
 
 #[derive(Serialize, Debug)]
@@ -43,7 +43,14 @@ pub struct CleanData {
 #[serde(crate = "near_sdk::serde")]
 pub struct RecordData {
     pub timestamp: UnixTimestamp,
-    pub amounts: Vec<(AccountId, U128)>,
+    pub amounts: Vec<(AccountId, RecordAmountDetailed)>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(crate = "near_sdk::serde")]
+pub struct RecordAmountDetailed {
+    pub credited: U128,
+    pub burnt: U128,
 }
 
 impl RecordData {
@@ -75,12 +82,12 @@ impl From<EventKind> for SweatClaimEvent {
 }
 
 pub fn emit(event: EventKind) {
-    log!(SweatClaimEvent::from(event).to_json_event_string());
+    log!("{}", SweatClaimEvent::from(event).to_json_event_string());
 }
 
 impl SweatClaimEvent {
     fn to_json_string(&self) -> String {
-        serde_json::to_string_pretty(self)
+        serde_json::to_string(self)
             .unwrap_or_else(|err| env::panic_str(&format!("Failed to serialize SweatClaimEvent: {err}")))
     }
 
@@ -93,41 +100,20 @@ impl SweatClaimEvent {
 mod test {
     use near_sdk::json_types::U128;
 
-    use crate::event::{BurnData, EventKind, SweatClaimEvent};
+    use crate::event::{BurnData, EventKind, SweatClaimEvent, VERSION};
 
     #[test]
     fn event_to_string() {
-        assert_eq!(
-            strip(
-                SweatClaimEvent::from(EventKind::Burn(BurnData {
-                    burnt_amount: U128(100_000_000),
-                }))
-                .to_json_event_string()
-                .as_str()
-            ),
-            strip(
-                r#"EVENT_JSON:{
-                "standard": "sweat_claim",
-                "version": "1.0.0",
-                "event": "burn",
-                "data": {
-                  "burnt_amount": "100000000"
-                }}"#
-            )
-        )
-    }
+        let event = SweatClaimEvent::from(EventKind::Burn(BurnData {
+            burnt_amount: U128(100_000_000),
+        }))
+        .to_json_event_string();
 
-    fn strip(s: &str) -> String {
-        let without_newlines: String = s.chars().filter(|&c| c != '\n').collect();
-        let mut previous_char = ' ';
-        let result: String = without_newlines
-            .chars()
-            .filter(|&c| {
-                let keep = !(c == ' ' && previous_char == ' ');
-                previous_char = c;
-                keep
-            })
-            .collect();
-        result
+        assert_eq!(
+            event,
+            format!(
+                r#"EVENT_JSON:{{"standard":"sweat_claim","version":"{VERSION}","event":"burn","data":{{"burnt_amount":"100000000"}}}}"#
+            )
+        );
     }
 }

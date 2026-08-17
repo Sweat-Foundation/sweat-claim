@@ -1,22 +1,26 @@
 #![cfg(test)]
 
 use claim_model::{
-    api::{ClaimApi, RecordApi},
-    ClaimAvailabilityView, UnixTimestamp,
+    api::{AuthApi, ClaimApi, ConfigApi, RecordApi},
+    ClaimAvailabilityView, ClaimableBalanceView, Duration, UnixTimestamp,
 };
 use near_sdk::{json_types::U128, PromiseOrValue};
+use plotters::prelude::LogScalable;
 
 use crate::{
     claim::api::test::EXT_TRANSFER_FUTURE,
-    common::tests::{data::set_test_future_success, Context},
+    common::{
+        tests::{data::set_test_future_success, Context},
+        AccountAccessor,
+    },
 };
 
 #[test]
 fn test_check_claim_availability_when_user_is_not_registered() {
     let (_, contract, accounts) = Context::init_with_oracle();
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
 
     let alice_can_claim = contract.is_claim_available(accounts.alice);
     assert_eq!(ClaimAvailabilityView::Unregistered, alice_can_claim);
@@ -30,8 +34,8 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_cla
     context.switch_account(&accounts.oracle);
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(alice_balance, alice_new_balance.available_balance());
 
     let claim_timestamp = contract.claim_period as u64 + 100;
     context.set_block_timestamp_in_seconds(claim_timestamp);
@@ -56,8 +60,8 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_cla
     context.switch_account(&accounts.oracle);
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(alice_balance, alice_new_balance.available_balance());
 
     let claim_timestamp = contract.claim_period as u64 + 100;
     context.set_block_timestamp_in_seconds(claim_timestamp);
@@ -68,7 +72,7 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_cla
     context.set_block_timestamp_in_seconds(check_timestamp);
 
     let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
-    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available);
+    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(0));
 }
 
 #[test]
@@ -79,8 +83,8 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_rec
     context.switch_account(&accounts.oracle);
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(alice_balance, alice_new_balance.available_balance());
 
     let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
     assert_eq!(
@@ -99,11 +103,31 @@ fn test_check_claim_availability_when_user_has_tokens_and_claim_period_after_rec
 
     context.set_block_timestamp_in_seconds(contract.claim_period as u64 + 100);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(alice_balance, alice_new_balance.available_balance());
 
     let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
-    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available);
+    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(0));
+}
+
+#[test]
+fn test_check_claim_availability_when_user_has_multiple_claim_records_and_claim_period_after_record_creation_is_passed()
+{
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    let record_count: u16 = 5;
+    let alice_balance = 300_000;
+    context.switch_account(&accounts.oracle);
+
+    for i in 0..record_count {
+        contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
+        context.set_block_timestamp_in_seconds(i as _);
+    }
+
+    context.set_block_timestamp_in_seconds(contract.claim_period as u64 + 100);
+
+    let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
+    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(0));
 }
 
 #[test]
@@ -112,8 +136,8 @@ fn test_claim_when_user_is_not_registered() {
     let (mut context, mut contract, accounts) = Context::init_with_oracle();
     set_test_future_success(EXT_TRANSFER_FUTURE, true);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
 
     context.switch_account(&accounts.alice);
     contract.claim();
@@ -141,13 +165,13 @@ fn test_claim_when_user_has_tokens_and_current_time_matches_claim_period() {
     context.switch_account(&accounts.oracle);
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
 
-    context.set_block_timestamp_in_seconds(contract.burn_period as u64);
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
 
     let alice_can_claim = contract.is_claim_available(accounts.alice.clone());
-    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available);
+    assert_eq!(alice_can_claim, ClaimAvailabilityView::Available(0));
 }
 
 #[test]
@@ -168,8 +192,8 @@ fn test_claim_when_user_has_tokens_and_claim_period_is_passed() {
     };
     assert_eq!(alice_balance, claimed_amount.total.0);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
 }
 
 #[test]
@@ -181,7 +205,7 @@ fn test_claim_when_user_has_tokens_and_burn_period_is_passed() {
     context.switch_account(&accounts.oracle);
     contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_balance))]);
 
-    context.set_block_timestamp_in_seconds(contract.burn_period as u64 + 100);
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
 
     context.switch_account(&accounts.alice);
     let claimed_amount = match contract.claim() {
@@ -190,8 +214,8 @@ fn test_claim_when_user_has_tokens_and_burn_period_is_passed() {
     };
     assert_eq!(0, claimed_amount.total.0);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(0, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
 }
 
 #[test]
@@ -212,6 +236,361 @@ fn test_claim_when_user_has_tokens_and_claim_period_is_passed_and_transfer_faile
     };
     assert_eq!(0, claimed_amount.total.0);
 
-    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone()).0;
-    assert_eq!(alice_balance, alice_new_balance);
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(alice_balance, alice_new_balance.available_balance());
+}
+
+#[test]
+fn test_claim_when_user_has_fully_evaporated_balance() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    let alice_top_up = 500_000_000;
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_top_up))]);
+
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
+
+    context.switch_account(&accounts.alice);
+    let claimed_amount = match contract.claim() {
+        PromiseOrValue::Promise(_) => panic!("Expected value"),
+        PromiseOrValue::Value(value) => value,
+    };
+    assert_eq!(0, claimed_amount.total.0);
+
+    let alice_new_balance = contract.get_claimable_balance_for_account(accounts.alice.clone(), None);
+    assert_eq!(0, alice_new_balance.available_balance());
+
+    assert_eq!(alice_top_up, contract.balance_to_burn);
+    assert!(!contract.accounts.get_account(&accounts.alice).is_locked);
+}
+
+#[test]
+fn test_claim_when_user_has_zero_balance() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    context.switch_account(&accounts.oracle);
+    contract.set_claim_period(0);
+
+    let alice_top_up_1 = 100;
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(alice_top_up_1))]);
+
+    context.switch_account(&accounts.alice);
+    let claimed_amount = match contract.claim() {
+        PromiseOrValue::Promise(_) => panic!("Expected value"),
+        PromiseOrValue::Value(value) => value,
+    };
+    assert_eq!(alice_top_up_1, claimed_amount.total.0);
+
+    context.set_block_timestamp_in_seconds(2 * contract.burn_period as u64 + 100);
+    let claimed_amount = match contract.claim() {
+        PromiseOrValue::Promise(_) => panic!("Expected value"),
+        PromiseOrValue::Value(value) => value,
+    };
+    assert_eq!(0, claimed_amount.total.0);
+}
+
+#[test]
+fn claim_with_zero_balance_still_refreshes_claim_period_refreshed_at() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    context.switch_account(&accounts.oracle);
+    contract.set_claim_period(0);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(100))]);
+
+    context.switch_account(&accounts.alice);
+    let _ = contract.claim(); // balance -> 0
+
+    let second_claim_time = 500u64;
+    context.set_block_timestamp_in_seconds(second_claim_time);
+    let _ = contract.claim(); // hits the zero-balance early return
+
+    let refreshed_at = contract.accounts.get_account(&accounts.alice).claim_period_refreshed_at;
+    assert_eq!(
+        second_claim_time as UnixTimestamp, refreshed_at,
+        "a zero-balance claim() call must still refresh claim_period_refreshed_at, \
+         otherwise it can be called every block indefinitely with no cooldown"
+    );
+}
+
+#[test]
+#[should_panic(expected = "Account is disabled")]
+fn claim_by_disabled_account_panics() {
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    context.switch_account(&accounts.oracle);
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), U128(700_000))]);
+    contract.set_account_enabled(accounts.alice.clone(), false);
+
+    context.set_block_timestamp_in_seconds(contract.claim_period as u64 + 100);
+    context.switch_account(&accounts.alice);
+    let _ = contract.claim();
+}
+
+#[test]
+fn test_claimable_balance_presentation() {
+    const BURN_PERIOD: Duration = 1_000;
+    const TEST_DURATION_FRACTION: f64 = 0.2;
+
+    let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+    context.switch_account(&accounts.oracle);
+    contract.set_claim_period(0);
+    contract.set_burn_period(BURN_PERIOD);
+
+    let alice_deposit = 100_000_000;
+    contract.record_batch_for_hold(vec![(accounts.alice.clone(), alice_deposit.into())]);
+
+    let test_time = (BURN_PERIOD.as_f64() * (1.0 + TEST_DURATION_FRACTION)) as u64;
+    context.set_block_timestamp_in_seconds(test_time);
+
+    let expected_total = alice_deposit;
+    let expected_available = expected_total - (expected_total as f64 * TEST_DURATION_FRACTION) as u128;
+
+    let ClaimableBalanceView::Detailed { total, available } =
+        contract.get_claimable_balance_for_account(accounts.alice.clone(), Some(true))
+    else {
+        panic!("Expected a detailed claimable balance view");
+    };
+    assert_eq!(expected_total, total.0);
+    assert_eq!(expected_available, available.0);
+
+    let ClaimableBalanceView::Short(available) =
+        contract.get_claimable_balance_for_account(accounts.alice.clone(), Some(false))
+    else {
+        panic!("Expected a short claimable balance view");
+    };
+    assert_eq!(expected_available, available.0);
+}
+
+mod demo {
+    use std::env;
+
+    use claim_model::{
+        api::{ClaimApi, ConfigApi, RecordApi},
+        ClaimableBalanceView, Duration, TokensAmount, UnixTimestamp,
+    };
+    use near_sdk::{json_types::U128, AccountId};
+    use plotters::{
+        backend::BitMapBackend,
+        chart::{ChartBuilder, LabelAreaPosition},
+        prelude::{AreaSeries, BLUE, WHITE, *},
+    };
+    use rand::{rngs::ThreadRng, Rng};
+
+    use crate::{common::tests::Context, Contract};
+
+    #[test]
+    #[ignore]
+    fn demo_evaporating() {
+        let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+        let burn_period = 400_000;
+        context.switch_account(&accounts.oracle);
+        contract.set_burn_period(burn_period);
+
+        let data = generate_data(
+            &mut context,
+            &mut contract,
+            &accounts.alice,
+            &accounts.oracle,
+            vec![(0, Action::Record(10u128.pow(18)))],
+            3600,
+        );
+
+        render_chart("$SWEAT evaporating", data, "evaporating.png").unwrap()
+    }
+
+    #[test]
+    #[ignore]
+    fn demo_continuous_evaporating() {
+        let mut rng = rand::thread_rng();
+        let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+        let burn_period_days = 5;
+        let burn_period = burn_period_days * 24 * 60 * 60;
+        context.switch_account(&accounts.oracle);
+        contract.set_burn_period(burn_period);
+
+        let actions = (0..2 * burn_period)
+            .step_by(8 * 60 * 60)
+            .map(|timestamp| (timestamp, Action::Record(rng.gen_range(1u128..10u128) * 10u128.pow(17))))
+            .collect();
+
+        let data = generate_data(
+            &mut context,
+            &mut contract,
+            &accounts.alice,
+            &accounts.oracle,
+            actions,
+            3600,
+        );
+
+        render_chart("$SWEAT continuous evaporating", data, "evaporating_continuous.png").unwrap()
+    }
+
+    #[test]
+    #[ignore]
+    fn demo_evaporating_with_claim() {
+        let rng = &mut rand::thread_rng();
+        let (mut context, mut contract, accounts) = Context::init_with_oracle();
+
+        let burn_period_days = 5;
+        let burn_period = burn_period_days * 24 * 60 * 60;
+        context.switch_account(&accounts.oracle);
+        contract.set_burn_period(burn_period);
+
+        let mut actions = generate_top_up_sequence(rng, 0, 2 * burn_period);
+        actions.push(((2.5 * burn_period as f64) as UnixTimestamp, Action::Claim));
+        actions.extend(generate_top_up_sequence(rng, 3 * burn_period, 4 * burn_period));
+
+        let data = generate_data(
+            &mut context,
+            &mut contract,
+            &accounts.alice,
+            &accounts.oracle,
+            actions,
+            3600,
+        );
+
+        render_chart("$SWEAT evaporating with claim", data, "evaporating_with_claim.png").unwrap()
+    }
+
+    fn generate_top_up_sequence(
+        rng: &mut ThreadRng,
+        start_timestamp: UnixTimestamp,
+        end_timestamp: UnixTimestamp,
+    ) -> Vec<(UnixTimestamp, Action)> {
+        (start_timestamp..end_timestamp)
+            .step_by(8 * 60 * 60)
+            .map(|timestamp| (timestamp, Action::Record(generate_token_amount(rng))))
+            .collect()
+    }
+
+    fn generate_token_amount(rng: &mut ThreadRng) -> TokensAmount {
+        rng.gen_range(1u128..10u128) * 10u128.pow(17)
+    }
+
+    fn generate_data(
+        context: &mut Context,
+        contract: &mut Contract,
+        alice: &AccountId,
+        oracle: &AccountId,
+        actions: Vec<(UnixTimestamp, Action)>,
+        step: Duration,
+    ) -> Vec<(UnixTimestamp, TokensAmount)> {
+        let mut actions = actions.to_vec();
+        actions.sort_by(|(left, _), (right, _)| left.cmp(right));
+
+        let mut result: Vec<(UnixTimestamp, TokensAmount)> = vec![];
+        let mut current_time: UnixTimestamp = 0;
+
+        context.switch_account(&alice);
+        for (timestamp, action) in actions {
+            result.extend(generate_balance_sequence(
+                context,
+                contract,
+                alice,
+                current_time,
+                timestamp,
+                step,
+            ));
+
+            match action {
+                Action::Record(amount) => {
+                    context.switch_account(&oracle);
+                    contract.record_batch_for_hold(vec![(alice.clone(), U128(amount))]);
+                    context.switch_account(&alice);
+                }
+                Action::Claim => {
+                    contract.claim();
+                }
+            }
+
+            current_time = timestamp;
+        }
+
+        let sequence_end_timestamp = current_time + 2 * contract.burn_period;
+        result.extend(generate_balance_sequence(
+            context,
+            contract,
+            alice,
+            current_time,
+            sequence_end_timestamp,
+            step,
+        ));
+
+        result
+    }
+
+    fn generate_balance_sequence(
+        context: &mut Context,
+        contract: &mut Contract,
+        alice: &AccountId,
+        start_timestamp: UnixTimestamp,
+        end_timestamp: UnixTimestamp,
+        step: Duration,
+    ) -> Vec<(UnixTimestamp, TokensAmount)> {
+        let mut result = vec![];
+
+        let mut current_time = start_timestamp;
+        while current_time <= end_timestamp {
+            context.set_block_timestamp_in_seconds(current_time as _);
+            let available_for_claim = contract.get_claimable_balance_for_account(alice.clone(), None);
+
+            result.push((current_time, available_for_claim.available_balance() as _));
+            current_time += step;
+        }
+
+        result
+    }
+
+    fn render_chart(
+        name: &str,
+        data: Vec<(UnixTimestamp, TokensAmount)>,
+        file_name: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let current_dir = env::current_dir().unwrap();
+        let root_dir = current_dir.parent().unwrap();
+        let output_file_path = format!("{}/doc/{file_name}", root_dir.display());
+
+        let root = BitMapBackend::new(output_file_path.as_str(), (1024, 768)).into_drawing_area();
+
+        root.fill(&WHITE)?;
+
+        let min_x: UnixTimestamp = data.iter().map(|(x, _)| *x).min().unwrap();
+        let max_x: UnixTimestamp = data.iter().map(|(x, _)| *x).max().unwrap();
+
+        let min_y: TokensAmount = data.iter().map(|(_, y)| *y).min().unwrap();
+        let max_y: TokensAmount = data.iter().map(|(_, y)| *y).max().unwrap();
+
+        let mut chart = ChartBuilder::on(&root)
+            .set_label_area_size(LabelAreaPosition::Left, 100)
+            .set_label_area_size(LabelAreaPosition::Bottom, 40)
+            .margin(10)
+            .caption(name, ("sans-serif", 40))
+            .build_cartesian_2d(min_x..max_x, min_y..max_y)?;
+
+        chart
+            .configure_mesh()
+            .x_desc("Time (in seconds)")
+            .y_desc("$SWEAT")
+            .y_label_formatter(&|value| {
+                let label = (value / 10u128.pow(17)) as f64 / 10.0;
+                format!("{:.1}", label)
+            })
+            .draw()?;
+
+        let series_data = data.iter().map(|(x, y)| (*x as u32, *y as u128));
+        let series = AreaSeries::new(series_data, 0, BLUE.mix(0.3));
+        chart.draw_series(series)?;
+
+        root.present().expect("Unable to write result to file");
+        Ok(())
+    }
+
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    enum Action {
+        Record(TokensAmount),
+        Claim,
+    }
 }

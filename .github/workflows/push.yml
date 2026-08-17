@@ -2,18 +2,17 @@ name: Push
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Actor
         run: echo ${{ github.actor }}
@@ -22,7 +21,7 @@ jobs:
         run: make build-in-docker
 
       - name: Upload binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sweat-claim
           path: res/sweat_claim.wasm
@@ -30,7 +29,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: Lint
         run: make lint
@@ -39,23 +38,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
+
+      - name: Install cargo-near
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.21.1/cargo-near-installer.sh | sh
 
       - name: Integration tests
         run: make integration
 
   push:
-    needs: [ build, lint, integration-tests ]
+    needs: [build, lint, integration-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
           fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
 
       - name: Download binary
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: sweat-claim
           path: res/

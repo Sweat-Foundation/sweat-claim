@@ -1,25 +1,25 @@
 use claim_model::api::AuthApi;
-use near_sdk::{env::log_str, near_bindgen, require, AccountId};
+use near_plugins::{access_control_any, AccessControllable};
+use near_sdk::{near_bindgen, AccountId};
 
-use crate::{Contract, ContractExt};
+use crate::{auth::Roles, common::AccountAccessor, Contract, ContractExt};
 
 #[near_bindgen]
 impl AuthApi for Contract {
-    fn add_oracle(&mut self, account_id: AccountId) {
-        Self::assert_private();
-
-        require!(self.oracles.insert(account_id.clone()), "Already exists");
-        log_str(&format!("Oracle {account_id} was added"));
+    #[access_control_any(roles(Roles::Maintainer))]
+    fn unlock_account(&mut self, account_id: AccountId) {
+        let account = self.accounts.get_account_mut(&account_id);
+        account.is_locked = false;
     }
 
-    fn remove_oracle(&mut self, account_id: AccountId) {
-        Self::assert_private();
-
-        require!(self.oracles.remove(&account_id), "No such oracle");
-        log_str(&format!("Oracle {account_id} was removed"));
+    #[access_control_any(roles(Roles::Maintainer))]
+    fn reset_service_call_flag(&mut self) {
+        self.is_service_call_running = false;
     }
 
-    fn get_oracles(&self) -> Vec<AccountId> {
-        self.oracles.iter().cloned().collect()
+    #[access_control_any(roles(Roles::Maintainer))]
+    fn set_account_enabled(&mut self, account_id: AccountId, enabled: bool) {
+        let account = self.accounts.get_account_mut(&account_id);
+        account.is_enabled = enabled;
     }
 }

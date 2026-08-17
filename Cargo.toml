@@ -3,24 +3,26 @@
 resolver = "2"
 
 default-members = ["contract"]
-members = ["contract", "integration-tests", "model"]
+# `integration-tests` is intentionally NOT a member: it is its own workspace
+# (see integration-tests/Cargo.toml) pinned to a newer toolchain so it can use a
+# recent `near-workspaces`, while the contract stays on the reproducible-build
+# toolchain. Run it with `make integration`.
+members = ["contract", "model"]
 
 [workspace.dependencies]
-fake = "2.9.2"
-rand = "0.8.5"
-anyhow = "1.0.79"
-async-trait = "0.1.77"
-tokio = "1.28"
-
-integration-trait = { git = "https://github.com/sweatco/integration-utils.git", rev = "e54dc392ef42837123dd2c0ad19b6d6b815192d7" }
-integration-utils = { git = "https://github.com/sweatco/integration-utils.git", rev = "e54dc392ef42837123dd2c0ad19b6d6b815192d7" }
-
 claim-model = { path = "model" }
-sweat-model = { git = "https://github.com/sweatco/sweat-near", rev = "bb9acde42fd6ef4f3e4c2a69d4ade8503df40f4a" }
 
-near-workspaces = "0.10.0"
-near-sdk = { git = "https://github.com/sweatco/near-sdk-rs", rev = "8c48b26cc48d969c1e5f3162141fe9c824fccecd" }
-near-contract-standards = { git = "https://github.com/sweatco/near-sdk-rs", rev = "8c48b26cc48d969c1e5f3162141fe9c824fccecd" }
+near-sdk = "=5.26.1"
 
-[patch.crates-io]
-near-sdk = { git = "https://github.com/sweatco/near-sdk-rs", rev = "8c48b26cc48d969c1e5f3162141fe9c824fccecd" }
+# Optimized release profile for the contract wasm.
+# `cargo near build` builds with `--release` by default and picks this up, so no
+# custom `--profile` flag is needed (these flags are NOT injected by cargo-near).
+[profile.release]
+codegen-units = 1
+# Tell `rustc` to optimize for small code size.
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+# Opt into extra safety checks on arithmetic operations.
+overflow-checks = true
