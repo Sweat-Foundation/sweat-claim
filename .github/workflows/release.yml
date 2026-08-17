@@ -1,0 +1,25 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: Sweat-Foundation/actions/.github/workflows/release.yml@v1
+    with:
+      files: |
+        res/sweat_claim.wasm
+        res/sweat_claim_abi.json
+        res/sweat_claim_abi.zst
+      dao-account-id: sweat-multisig.sputnik-dao.near
+      proposer-account-id: 4a95fda44bc5fa6ff57dd742fe42a78d9889a310d188d9de9c803b1fc392f910
+      blob-path: res/sweat_claim.wasm
+      contract-name: sweat_claim
+      wasm-path: res/sweat_claim.wasm
+    secrets:
+      proposer-private-key: ${{ secrets.PROPOSER_PRIVATE_KEY }}
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
