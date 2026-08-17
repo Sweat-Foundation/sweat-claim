@@ -8,7 +8,6 @@ use tracing::info;
 use super::helpers::{grant_role, init_tracing, storage_deposit};
 
 const INITIAL_USER_BALANCE: NearToken = NearToken::from_near(10);
-const ALICE_TGE_MINT: u128 = 100_000_000;
 
 pub const CLAIM_PERIOD: u32 = 30 * 60;
 pub const BURN_PERIOD: u32 = 3 * 60 * 60;
@@ -41,13 +40,21 @@ pub async fn prepare_contract(claim_period: Option<u32>, burn_period: Option<u32
     let manager = create_user(&root, "manager").await?;
     let alice = create_user(&root, "alice").await?;
 
-    // Initialize the SWEAT token. `new`/`add_oracle`/`tge_mint` are owner-gated
-    // (predecessor must equal the contract account), so they are signed by the
-    // contract account itself via `Contract::call`.
+    // Initialize the SWEAT token: the claim contract is the holding account,
+    // `manager` is the Oracle allowed to `defer_batch`. `init` on the claim
+    // contract is owner-gated (predecessor must equal the contract account),
+    // so it's signed by the contract account itself via `Contract::call`.
     info!("initializing sweat");
     sweat
         .call("new")
-        .args_json(json!({ "postfix": ".u.sweat.testnet" }))
+        .args_json(json!({
+            "holding_account_id": claim.id(),
+            "super_admin_account_id": sweat.id(),
+            "oracle_account_ids": [manager.id()],
+            "denylist_manager_account_ids": [],
+            "pause_manager_account_ids": [],
+            "unpause_manager_account_ids": [],
+        }))
         .transact()
         .await?
         .into_result()?;
@@ -61,30 +68,18 @@ pub async fn prepare_contract(claim_period: Option<u32>, burn_period: Option<u32
         .await?
         .into_result()?;
 
-    // Oracle wiring: manager may defer on the token and operate the claim contract;
-    // the token contract may call `record_batch_for_hold` on the claim contract.
-    // `claim`'s own account is the only account with `acl_grant_role` permission
-    // (it made itself super-admin in `init`), so these calls must be signed by `claim` itself.
-    sweat
-        .call("add_oracle")
-        .args_json(json!({ "account_id": manager.id() }))
-        .transact()
-        .await?
-        .into_result()?;
+    // Oracle wiring: the token contract may call `record_batch_for_hold` on the
+    // claim contract. `claim`'s own account is the only account with
+    // `acl_grant_role` permission (it made itself super-admin in `init`), so
+    // these calls must be signed by `claim` itself.
     grant_role(&claim, "Oracle", sweat.id()).await?;
     for role in ["Oracle", "BurnManager", "Maintainer"] {
         grant_role(&claim, role, manager.id()).await?;
     }
 
-    // Register the claim contract and alice for FT storage, then seed alice.
+    // Register the claim contract and alice for FT storage.
     storage_deposit(&sweat, claim.id()).await?;
     storage_deposit(&sweat, alice.id()).await?;
-    sweat
-        .call("tge_mint")
-        .args_json(json!({ "account_id": alice.id(), "amount": ALICE_TGE_MINT.to_string() }))
-        .transact()
-        .await?
-        .into_result()?;
 
     // Configure claim/burn windows (oracle-gated → signed by manager).
     info!("configuring claim/burn periods");

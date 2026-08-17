@@ -80,16 +80,15 @@ pub async fn balance_to_burn(claim: &Contract) -> Result<u128> {
 }
 
 /// Defers `steps` for `account_id` on the SWEAT token, crediting the claim
-/// contract as the holding account — the same mechanism real steps go through
-/// on their way to becoming a claimable balance. Signed by `context.manager`,
-/// SWEAT's oracle.
+/// contract as the holding account (baked in at `new`) — the same mechanism
+/// real steps go through on their way to becoming a claimable balance. Signed
+/// by `context.manager`, SWEAT's oracle.
 pub async fn defer_steps(context: &Context, account_id: &AccountId, steps: u32) -> Result<()> {
     context
         .manager
         .call(context.sweat.id(), "defer_batch")
         .args_json(json!({
             "steps_batch": [[account_id, steps]],
-            "holding_account_id": context.claim.id(),
         }))
         .max_gas()
         .transact()

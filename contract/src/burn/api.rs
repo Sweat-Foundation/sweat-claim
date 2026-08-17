@@ -108,7 +108,7 @@ pub(crate) mod prod {
             .to_vec();
 
             Promise::new(self.token_account_id.clone())
-                .function_call("burn".to_string(), args, NearToken::from_yoctonear(0), GAS_FOR_BURN)
+                .function_call("burn".to_string(), args, NearToken::from_yoctonear(1), GAS_FOR_BURN)
                 .then(
                     ext_self::ext(env::current_account_id())
                         .with_static_gas(GAS_FOR_BURN_CALLBACK)
